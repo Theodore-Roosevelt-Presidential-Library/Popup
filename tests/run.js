@@ -537,6 +537,68 @@ async function removeFloat(page) {
     await ctx.close();
   }
 
+  /* ---- 13. background photo and shade ---- */
+  {
+    const NIGHT = { bg: "#092A4D", text: "#FFFFFF", head: "#F5CE3E", btnBg: "#F5CE3E", btnText: "#092A4D" };
+    const surfaceOf = (page, id, fmt) => page.evaluate(([id, fmt]) => {
+      const r = document.querySelector("#trplpop-" + id).shadowRoot;
+      const el = r.querySelector(fmt === "takeover" ? ".fmt-takeover" : ".box");
+      const cs = getComputedStyle(el), q = el.getBoundingClientRect();
+      return { has: el.classList.contains("has-photo"), img: cs.backgroundImage, size: cs.backgroundSize, pos: cs.backgroundPosition, rep: cs.backgroundRepeat, color: cs.backgroundColor, w: Math.round(q.width), h: Math.round(q.height), vw: innerWidth, vh: innerHeight, layers: (cs.backgroundImage.match(/linear-gradient|url\(/g) || []).length };
+    }, [id, fmt]);
+    const kinds = [["banner", { format: "banner", position: "top" }, "fmt-banner.on"], ["popup", { format: "popup", size: "m" }, "scrim.on"], ["slidein", { format: "slidein" }, "fmt-slidein.on"], ["takeover", { format: "takeover" }, "fmt-takeover.on"]];
+    for (const vp of ["desktop", "phone"]) {
+      for (const [k, f, cls] of kinds) {
+        const { ctx, page } = await open(browser, vp);
+        const c = cfg(Object.assign({ id: "ph-" + k, theme: Object.assign({ photo: { url: "/demo/sample.svg", shade: 0.6 } }, NIGHT) }, f));
+        await register(page, c); await shown(page, c.id, cls); await sleep(450);
+        const s = await surfaceOf(page, c.id, c.format);
+        check("background photo fills the whole " + k + " (" + vp + ")", s.has && /url\(/.test(s.img) && /^cover(, cover)?$/.test(s.size) && s.rep.indexOf("no-repeat") === 0, JSON.stringify(s));
+        check("shade over the photo is the pop-up's own background colour at the chosen strength: " + k + " (" + vp + ")", s.img.indexOf("linear-gradient(rgba(9, 42, 77, 0.6), rgba(9, 42, 77, 0.6))") === 0 && s.color === "rgb(9, 42, 77)", s.img + " | " + s.color);
+        if (k === "takeover") check("takeover photo covers the whole window (" + vp + ")", s.w === s.vw && s.h === s.vh, s.w + "x" + s.h);
+        check("no sideways scroll with a background photo: " + k + " (" + vp + ")", await noOverflow(page));
+        await page.screenshot({ path: path.join(OUT, "photo-" + k + "-" + vp + ".png") });
+        await ctx.close();
+      }
+    }
+    let { ctx, page } = await open(browser, "desktop");
+    const shadeOf = async (id, photo, extra) => {
+      const c = cfg(Object.assign({ id, format: "popup", theme: Object.assign({ photo }, NIGHT) }, extra || {}));
+      await page.evaluate((c) => { c._c = window.TRPLPopup.checksum(c); window.TRPLPopup.register(c); window.TRPLPopup.show(c.id, { force: true }); }, c);
+      await shown(page, id, "scrim.on"); await sleep(120);
+      return surfaceOf(page, id, c.format);
+    };
+    let s = await shadeOf("ph-none", { url: "/demo/sample.svg", shade: 0 });
+    check("shade can be turned off", s.img.indexOf("rgba(9, 42, 77, 0)") > 0, s.img);
+    s = await shadeOf("ph-default", { url: "/demo/sample.svg" });
+    check("a photo with no shade setting gets a medium shade", s.img.indexOf("rgba(9, 42, 77, 0.6)") > 0, s.img);
+    s = await shadeOf("ph-max", { url: "/demo/sample.svg", shade: 7 });
+    check("shade strength is capped", s.img.indexOf("rgba(9, 42, 77, 0.95)") > 0, s.img);
+    s = await shadeOf("ph-bad", { url: "/demo/sample.svg", shade: "1);background:red" });
+    check("a shade value that is not a number is ignored", s.img.indexOf("rgba(9, 42, 77, 0.6)") > 0 && s.layers === 2, s.img);
+    s = await shadeOf("ph-top", { url: "/demo/sample.svg", shade: 0.4, focus: "top" });
+    check("the photo can be held to the top", /50% 0%$/.test(s.pos), s.pos);
+    s = await shadeOf("ph-focus-bad", { url: "/demo/sample.svg", focus: "constructor" });
+    check("an unknown focus setting falls back to the middle", /, 50% 50%$/.test(s.pos), s.pos);
+    for (const [n, u] of [["javascript", "javascript:alert(1)"], ["http", "http://example.com/a.jpg"], ["data", "data:image/svg+xml,<svg/>"], ["protocol-relative", "//example.com/a.jpg"]]) {
+      s = await shadeOf("ph-u-" + n, { url: u });
+      check("photo address must be https or site-relative: " + n + " refused", !s.has && s.img === "none", s.img);
+    }
+    s = await shadeOf("ph-inject", { url: 'https://www.trlibrary.com/a.jpg"),url("https://example.com/b.jpg' });
+    check("a photo address cannot add extra layers or styles", s.img.split('url("').length === 2 && s.img.split('")').length === 2 && s.size === "cover, cover", s.img);
+    s = await shadeOf("ph-nophoto", undefined);
+    check("without a photo nothing is added", !s.has && s.img === "none", s.img);
+    await ctx.close();
+
+    // earlier takeover setting still works
+    ({ ctx, page } = await open(browser, "desktop"));
+    const old = cfg({ id: "ph-old", format: "takeover", theme: NIGHT, content: { headline: "Dare greatly", image: { url: "/demo/sample.svg", alt: "", pos: "bg" }, buttons: [TICKETS] } });
+    await register(page, old); await shown(page, old.id, "fmt-takeover.on"); await sleep(300);
+    s = await surfaceOf(page, old.id, "takeover");
+    check("takeovers saved with the earlier behind-the-text image still show it", s.has && s.img.indexOf("rgba(9, 42, 77, 0.72)") > 0 && await page.evaluate((id) => !document.querySelector("#trplpop-" + id).shadowRoot.querySelector(".media"), old.id), s.img);
+    await ctx.close();
+  }
+
   await browser.close();
   srv.close();
   const failed = results.filter((r) => !r.ok);

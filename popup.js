@@ -546,7 +546,7 @@
     var t = c.theme || {};
     var bg = colour(t.bg, "#FFFFFF"), text = colour(t.text, "#25282A"), head = colour(t.head, text);
     var bb = colour(t.btnBg, "#E7805D"), bt = colour(t.btnText, "#25282A");
-    var scrim = unit(t.scrim, 0.62), tint = unit(t.imageTint, 0.72);
+    var scrim = unit(t.scrim, 0.62);
     return [
       ":host{all:initial}",
       "*{box-sizing:border-box}",
@@ -607,8 +607,6 @@
       /* takeover */
       ".fmt-takeover{position:fixed;top:0;right:0;bottom:0;left:0;z-index:" + Z_OVERLAY + ";display:flex;align-items:center;justify-content:center;overflow:auto;opacity:0;transition:opacity .35s ease;background:" + bg + "}",
       ".fmt-takeover.on{opacity:1}",
-      ".fmt-takeover .bgimg{position:absolute;top:0;right:0;bottom:0;left:0;background-size:cover;background-position:center}",
-      ".fmt-takeover .bgimg:after{content:'';position:absolute;top:0;right:0;bottom:0;left:0;background:" + bg + ";opacity:" + tint + "}",
       ".fmt-takeover .box{background:transparent;position:relative;max-width:760px;width:100%;padding:4.5rem 2rem 3rem;text-align:center;margin:auto}",
       ".fmt-takeover .head{font-size:4.6rem}",
       ".fmt-takeover .body{font-size:1.15rem;max-width:36em;margin-left:auto;margin-right:auto}",
@@ -648,6 +646,30 @@
   /* Theme values go into a stylesheet, so only plain hex colours and 0–1 numbers are accepted. */
   function colour(v, fallback) { return typeof v === "string" && /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(v) ? v : fallback; }
   function unit(v, fallback) { return typeof v === "number" && v >= 0 && v <= 1 ? v : fallback; }
+
+  function rgba(hex, a) {
+    hex = hex.slice(1);
+    if (hex.length === 3) hex = hex.charAt(0) + hex.charAt(0) + hex.charAt(1) + hex.charAt(1) + hex.charAt(2) + hex.charAt(2);
+    var n = parseInt(hex, 16);
+    return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a + ")";
+  }
+  var PHOTO_FOCUS = { center: "center", top: "center top", bottom: "center bottom", left: "left center", right: "right center" };
+  // theme.photo = { url, shade, focus }. The photo covers the whole pop-up. The shade is a layer of the
+  // pop-up's own background colour over the photo (0 = none, 0.9 = nearly solid), which keeps the text readable.
+  function photoOf(c) {
+    var t = c.theme || {}, ct = c.content || {}, p = t.photo && typeof t.photo === "object" ? t.photo : null;
+    var url = p ? safeUrl(p.url, "image") : "", shade = p ? p.shade : undefined, focus = p ? p.focus : "";
+    if (!url && c.format === "takeover" && ct.image && ct.image.pos === "bg") {     // earlier form of the same thing
+      url = safeUrl(ct.image.url, "image"); shade = unit(t.imageTint, 0.72);
+    }
+    if (!url) return null;
+    shade = typeof shade === "number" && shade >= 0 ? Math.min(shade, 0.95) : 0.6;
+    return {
+      url: url.replace(/["\\\n\r]/g, ""),
+      shade: Math.round(shade * 100) / 100,
+      pos: Object.prototype.hasOwnProperty.call(PHOTO_FOCUS, focus) ? PHOTO_FOCUS[focus] : "center"
+    };
+  }
 
   function hideClass(c, key) {
     var h = (c.content || {}).hide || {};
@@ -698,13 +720,6 @@
     } else if (c.format === "takeover") {
       outer = doc.createElement("div");
       outer.className = "fmt-takeover";
-      var bgu = ct.image && ct.image.pos === "bg" ? safeUrl(ct.image.url, "image") : "";
-      if (bgu) {
-        var bgd = doc.createElement("div");
-        bgd.className = "bgimg" + hideClass(c, "image");
-        bgd.style.backgroundImage = 'url("' + bgu.replace(/["\\\n\r]/g, "") + '")';
-        outer.appendChild(bgd);
-      }
       outer.appendChild(box);
     } else {
       outer = doc.createElement("div");
@@ -712,6 +727,16 @@
       var ip = ct.image && ct.image.url ? (ct.image.pos === "left" || ct.image.pos === "right" ? " img-" + ct.image.pos : "") : "";
       box.className += " fmt-popup size-" + (c.size === "s" || c.size === "l" ? c.size : "m") + ip;
       outer.appendChild(box);
+    }
+    var photo = photoOf(c);
+    if (photo) {
+      var surface = c.format === "takeover" ? outer : box;
+      var layer = rgba(colour((c.theme || {}).bg, "#FFFFFF"), photo.shade);
+      surface.className += " has-photo";
+      surface.style.backgroundImage = "linear-gradient(" + layer + "," + layer + "),url(\"" + photo.url + "\")";
+      surface.style.backgroundSize = "cover";
+      surface.style.backgroundRepeat = "no-repeat";
+      surface.style.backgroundPosition = "center," + photo.pos;
     }
     if (modal) {
       var dlg = c.format === "takeover" ? outer : box;

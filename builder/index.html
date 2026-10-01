@@ -98,6 +98,15 @@
   .swatches button{width:28px;height:28px;border-radius:50%;border:1px solid rgba(0,0,0,.25);cursor:pointer;padding:0}
   .swatches button[aria-pressed=true]{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--navy)}
   .verdict{margin-top:.8rem;padding:.55rem .7rem;border-radius:4px;font-size:13.5px;background:#EEF3EA;border:1px solid #C8D8BF}
+  .verdict.maybe{background:#FBF4DF;border-color:#E6D69C}
+  .spec{margin-top:.8rem;padding:.7rem .8rem;border:1px solid var(--line);border-radius:4px;background:#fff;font-size:13.5px}
+  .spec b.dim{font-family:var(--display);font-weight:800;font-size:27px;letter-spacing:.02em;color:var(--navy);display:block;line-height:1;margin:.15rem 0 .35rem}
+  .spec .frame{float:right;margin:0 0 .4rem .8rem;border:1px solid #B9B5AA;background:var(--paper2);position:relative}
+  .spec .frame i{position:absolute;border:1px dashed var(--orange-deep);background:rgba(231,128,93,.22)}
+  .spec p{margin:.35rem 0 0}
+  .spec a.canva{display:inline-block;margin-top:.55rem;font-weight:700;color:var(--orange-deep)}
+  #photoLooks{margin-top:.6rem;font-size:13.5px;color:var(--soft)}
+  #photoLooks .mini-btn{margin:.35rem .3rem 0 0}
   .verdict.no{background:#F7ECE8;border-color:#E2C3B9}
 
   /* small controls */
@@ -272,6 +281,22 @@
           <div class="cards" id="presets"></div>
           <div class="verdict" id="contrast"></div>
           <p class="hint" id="fontNote" style="margin:.7rem 0 0">Fonts are the website&rsquo;s own, loaded from trlibrary.com: Dharma Gothic for headlines, Clearface for text, Frutiger for buttons.</p>
+          <div id="photoBlock">
+            <h3>Background photo <span class="n">(optional)</span></h3>
+            <label><span class="lb">Web address of the photo</span><input type="url" id="photoUrl" data-k="photo.url" placeholder="https://www.trlibrary.com/sites/default/files/…" spellcheck="false">
+              <span class="hint">Upload the photo to the website or the photo library first, then paste its address here. It stretches to fill the whole <span id="photoWhat">pop-up</span>, behind the words.</span></label>
+            <div id="photoOpts" hidden>
+              <div class="row">
+                <label><span class="lb" id="photoShadeLabel">Darken the photo</span><select id="photoShade"></select></label>
+                <label><span class="lb">Part to keep in view</span><select id="photoFocus"></select></label>
+              </div>
+              <span class="hint" id="photoShadeHint"></span>
+              <div class="verdict" id="photoVerdict"></div>
+              <div id="photoLooks" hidden></div>
+            </div>
+            <div class="spec" id="photoSpec"></div>
+          </div>
+
           <details class="more" id="more2">
             <summary>Choose colors one by one</summary>
             <div id="colors"></div>

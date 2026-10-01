@@ -7,8 +7,8 @@ Home: `https://popup.labs.trlibrary.com` (GitHub Pages, this repo).
 
 | Piece | State |
 |---|---|
-| Runtime `popup.js`: four formats, page rules, triggers, frequency, queue, ticket alert, chat launcher and fixed-header handling, data-layer events, JavaScript interface | Built. 140 automated checks pass at phone, tablet and desktop widths. |
-| Builder: editor, brand presets, sitemap page rules, live preview, Copy the code, open existing, share link | Built at `/builder/` as a five-step guided flow in plain language. 69 automated checks pass. |
+| Runtime `popup.js`: four formats, page rules, triggers, frequency, queue, ticket alert, chat launcher and fixed-header handling, data-layer events, JavaScript interface | Built. 179 automated checks pass at phone, tablet and desktop widths. |
+| Builder: editor, brand presets, sitemap page rules, live preview, Copy the code, open existing, share link | Built at `/builder/` as a five-step guided flow in plain language. 88 automated checks pass. |
 | Demo page | Built (`/demo/`). |
 | Sitemap copy and nightly refresh job | Built. The job starts once the repo is pushed. Confirmed that trlibrary.com does not allow its sitemap to be read from another domain, so the copy is needed. |
 | One-time GTM import file | Written, not yet imported into GTM. GTM shows every change before confirming. |
@@ -329,6 +329,7 @@ Accuracy: reliable for country and state; weaker for city, especially for rural 
 - **Guardrails:** live contrast check; accent colours restricted to headlines per the guidelines; a copy check for house terminology from `brand.json`.
 - **Fonts:** the website's own: Dharma Gothic E (headlines), Clearface (text), Frutiger (buttons, labels), under the family names the trlibrary.com theme declares. On the site they resolve from the theme with no extra request. `fonts.css` copies the theme's declarations and points at the same files on www.trlibrary.com; the builder, preview, demo and front page link to it, and `popup.js` adds it on any page where the fonts are missing. Fallbacks are the website's size-matched stand-ins, then system fonts.
 - **Images:** hosted on Drupal or the DAM and pasted as URLs, as with rsvp.labs.
+- **Background photo:** any format; scaled to cover the whole pop-up, with a layer of the look's background colour over it (none, a little, medium, a lot) and a choice of which part stays in view. The builder checks readability against the brightest and darkest a photo can be, shows the best photo size and always-in-view area for the chosen format (takeover 2400 × 1600, pop-up 1600 × 1000, slide-in 1200 × 800, banner 2400 × 600), and links to a Canva template with the crop lines drawn in.
 - **Preview:** desktop, tablet and phone frames, with a mock ticket alert and chat launcher that can be toggled on.
 - **Page rules:** section picker, page search and live match list from the sitemap (section 7).
 - **Hand-offs:** one **Copy the code** button, with the tag name, version name and exact GTM steps shown beside it (section 10); **Copy everything to send to a colleague** for handing the GTM step to someone else; open an existing pop-up from a pasted snippet; a share link for passing a draft to a colleague.

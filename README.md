@@ -40,6 +40,23 @@ To edit: copy the tag's HTML into the builder with **Open an existing pop-up**, 
 
 If the template tag is missing, the settings are: Custom HTML; Support document.write off; Advanced Settings → Tag firing options → Once per page; Triggering → All Pages.
 
+## Background photos
+
+Any format can have a background photo (builder, Look step). The photo is scaled to cover the whole pop-up. A layer of the pop-up's own background color goes over it so the words stay readable: on a dark look that darkens the photo, on a light look it lightens it. The builder warns when the words could be hard to read.
+
+| Format | Best photo size | Always in view (middle) | Canva template |
+|---|---|---|---|
+| Takeover | 2400 × 1600 | 720 × 1350 | [open](https://www.canva.com/design/DAHWzkUgY7A/edit) |
+| Pop-up | 1600 × 1000 | 780 × 430 | [open](https://www.canva.com/design/DAHWzmxD0Uo/edit) |
+| Slide-in | 1200 × 800 | 810 × 500 | [open](https://www.canva.com/design/DAHWzpikiKw/edit) |
+| Banner | 2400 × 600 | 780 × 70 | [open](https://www.canva.com/design/DAHWztAL01Q/edit) |
+
+The photo is cropped to fit each screen, so only the middle area is certain to show. Each Canva template is the right size and has the crop lines drawn in: place the photo, delete the guide layer, download as JPG (under about 500 KB), upload it to the website or the photo library, and paste its address into the builder.
+
+The Canva links above open only for people the designs are shared with. To let anyone make their own copy, create a template link for each (Canva: Share, then Template link) and replace the links in `CANVA_TEMPLATES` in `builder/builder.js`.
+
+In a pop-up's settings the photo is `theme.photo`: `{ "url": "https://…", "shade": 0.65, "focus": "top" }`. `shade` runs from 0 (none) to 0.95; `focus` is `center`, `top`, `bottom`, `left` or `right`.
+
 ## Fonts
 
 Pop-ups use the website's fonts: Dharma Gothic E for headlines, Clearface for text, Frutiger for buttons and labels. The font files stay on www.trlibrary.com; nothing is hosted here.
@@ -100,8 +117,8 @@ TRPLPopup.push(["config", { sessionOverlayCap: 1 }]);  // site-wide settings, fr
 ### Running the checks
 
 ```sh
-NODE_PATH=$(npm root -g) node tests/run.js                       # runtime, 140 checks
-NODE_PATH=$(npm root -g) node tests/builder.js                   # builder, 69 checks
+NODE_PATH=$(npm root -g) node tests/run.js                       # runtime, 179 checks
+NODE_PATH=$(npm root -g) node tests/builder.js                   # builder, 88 checks
 ```
 
 Both need Node and Playwright with Chromium. Screenshots go to `tests/out/`.

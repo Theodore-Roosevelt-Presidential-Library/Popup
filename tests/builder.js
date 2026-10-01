@@ -215,6 +215,58 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await page.click('[data-dev="desktop"]');
   for (const [n, name] of [[1, "message"], [2, "look"]]) { await go(n); await sleep(500); await page.screenshot({ path: path.join(OUT, "builder-step-" + name + ".png") }); }
 
+  /* ---- background photo ---- */
+  await go(0); await page.click('[data-fmt="popup"]'); await go(2);
+  check("Look step offers a background photo, with no options until one is given", await page.isVisible("#photoUrl") && !(await page.isVisible("#photoShade")));
+  check("without a photo the code has no photo setting", await page.evaluate(() => !window.__trplBuilder.toConfig().theme.photo));
+  check("ideal photo size is shown for the chosen format", /1,600 \u00d7 1,000 pixels/.test(await page.textContent("#photoDim")) && /780 \u00d7 430/.test(await page.textContent("#photoSafe")));
+  await page.click("#presets [data-preset='0']");                                   // White: dark words
+  await page.fill("#photoUrl", "/demo/sample.svg"); await sleep(200);
+  check("giving a photo reveals the shade and focus choices", await page.isVisible("#photoShade") && await page.isVisible("#photoFocus"));
+  check("the photo goes into the code with a medium shade", await page.evaluate(() => { const p = window.__trplBuilder.toConfig().theme.photo; return p && p.url === "/demo/sample.svg" && p.shade === 0.65 && !("focus" in p); }));
+  check("a light look says the layer lightens, and offers the dark looks", /Lighten/.test(await page.textContent("#photoShadeLabel")) && (await page.$$("#photoLooks [data-preset]")).length === 4);
+  await page.click("#photoLooks [data-preset]:nth-of-type(3)"); await sleep(200);   // Night Sky
+  check("choosing a dark look from that note switches the look and the wording to Darken", /Darken/.test(await page.textContent("#photoShadeLabel")) && await page.evaluate(() => window.__trplBuilder.toConfig().theme.bg === "#092A4D") && !(await page.isVisible("#photoLooks")));
+  check("medium shade on a dark look is readable over any photo", /Easy to read over any photo/.test(await page.textContent("#photoVerdict")));
+  await page.selectOption("#photoShade", "0"); await sleep(150);
+  check("no shade warns that the words may be hard to read", /Hard to read/.test(await page.textContent("#photoVerdict")) && await page.evaluate(() => window.__trplBuilder.toConfig().theme.photo.shade === 0));
+  await go(4);
+  check("Publish lists the readability warning with a link back to the Look step", (await page.$$eval("#checks li", (l) => l.filter((x) => /background photo/.test(x.textContent) && x.querySelector('[data-go="2"]')).length)) === 1);
+  await go(2);
+  await page.selectOption("#photoShade", "0.85"); await page.selectOption("#photoFocus", "top"); await sleep(1700);
+  {
+    const frame = page.frames().find((x) => x.url().includes("preview.html"));
+    const bgi = await frame.evaluate(() => { const b = document.querySelector("[data-trplpop]").shadowRoot.querySelector(".box"); const c = getComputedStyle(b); return { img: c.backgroundImage, size: c.backgroundSize, pos: c.backgroundPosition }; });
+    check("preview shows the photo covering the pop-up with the chosen shade and focus", /rgba\(9, 42, 77, 0\.85\)/.test(bgi.img) && /sample\.svg/.test(bgi.img) && bgi.size === "cover, cover" && /50% 0%$/.test(bgi.pos), JSON.stringify(bgi));
+  }
+  await page.screenshot({ path: path.join(OUT, "builder-step-look-photo.png") });
+  {
+    const code = await page.evaluate(() => window.__trplBuilder.snippet(window.__trplBuilder.toConfig()));
+    const back = await page.evaluate((code) => { const c = window.__trplBuilder.parseImport(code); window.__trplBuilder.fromConfig(c); return window.__trplBuilder.toConfig().theme.photo; }, code);
+    check("photo, shade and focus survive copying the code out and opening it again", back && back.url === "/demo/sample.svg" && back.shade === 0.85 && back.focus === "top", JSON.stringify(back));
+  }
+  await page.evaluate(() => window.__trplBuilder.fromConfig({ id: "2026-10-old-takeover", name: "Old takeover", format: "takeover", theme: { bg: "#25282A", text: "#FFFFFF", head: "#FC924E", btnBg: "#FC924E", btnText: "#25282A" }, content: { headline: "Dare greatly", image: { url: "https://www.trlibrary.com/a.jpg", alt: "", pos: "bg" } }, rules: { sets: [{ trigger: { type: "load" } }] } }));
+  check("a takeover saved with the earlier behind-the-text picture opens with it as the background photo", await page.evaluate(() => { const c = window.__trplBuilder.toConfig(); return c.theme.photo && c.theme.photo.url === "https://www.trlibrary.com/a.jpg" && c.theme.photo.shade === 0.72 && !c.content.image; }));
+  await page.evaluate(() => window.__trplBuilder.fromConfig({ id: "2026-10-hostile-photo", name: "x", format: "popup", theme: { photo: { url: 'javascript:alert(1)', shade: "9;x", focus: "<img src=x onerror=alert(1)>" } }, content: { headline: "Hi" }, rules: { sets: [{ trigger: { type: "load" } }] } }));
+  await go(4);
+  check("a bad photo address from pasted code is stopped at Publish and bad shade and focus values are reset", await page.evaluate(() => { const p = window.__trplBuilder.toConfig().theme.photo; return p.shade === 0.65 && !("focus" in p); }) && (await page.$$eval("#checks li", (l) => l.filter((x) => /photo\u2019s address must start with https/.test(x.textContent)).length)) === 1);
+  await go(2); await page.fill("#photoUrl", ""); await sleep(150);
+  for (const [f, dim] of [["banner-top", "2,400 \u00d7 600"], ["slidein", "1,200 \u00d7 800"], ["takeover", "2,400 \u00d7 1,600"]]) {
+    await go(0); await page.click('[data-fmt="' + f + '"]'); await go(2);
+    check("ideal photo size for " + f + " is " + dim.replace("\u00d7", "x"), (await page.textContent("#photoDim")).indexOf(dim) === 0);
+  }
+  {
+    const links = {};
+    for (const f of ["banner-top", "popup", "slidein", "takeover"]) {
+      await go(0); await page.click('[data-fmt="' + f + '"]'); await go(2);
+      links[f] = await page.evaluate(() => { const a = document.getElementById("photoCanva"); return a ? { href: a.href, target: a.target, rel: a.rel } : null; });
+    }
+    const all = Object.keys(links).map((k) => links[k]);
+    check("each format links to its own Canva template, opening in a new tab", all.every((a) => a && /^https:\/\/www\.canva\.com\/design\/[A-Za-z0-9_-]+\//.test(a.href) && a.target === "_blank" && /noopener/.test(a.rel)) && new Set(all.map((a) => a.href)).size === 4, JSON.stringify(links));
+  }
+  await go(0); await page.click('[data-fmt="takeover"]'); await go(1);
+  check("the takeover picture no longer offers a behind-the-text position", await page.$$eval("#imgPos option", (o) => o.every((x) => x.value !== "bg")));
+
   check("Look step says where the fonts come from", await page.evaluate(() => /trlibrary\.com/.test(document.getElementById("fontNote").textContent)));
   check("builder page itself uses the shared font list", await page.evaluate(() => document.querySelectorAll('link[href$="fonts.css"]').length === 1 && !/@font-face/.test(document.querySelector("style").textContent)));
 
