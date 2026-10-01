@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>TRPL Popup — Demo</title>
+<style>
+  :root{--ink:#25282A;--sand:#D1CCBD;--orange:#E7805D;--navy:#092A4D;--paper:#FBF9F5}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Georgia,serif;color:var(--ink);background:var(--paper);line-height:1.6}
+  #top-header{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(0,0,0,.78);color:#fff;
+    display:flex;align-items:center;gap:1rem;padding:0 1.25rem;height:64px;font-family:Arial,sans-serif}
+  #top-header strong{letter-spacing:.08em;text-transform:uppercase;font-size:.85rem}
+  #top-header span{opacity:.7;font-size:.8rem}
+  main{max-width:880px;margin:0 auto;padding:96px 1.25rem 4rem}
+  h1{font-family:'Arial Narrow',Impact,sans-serif;text-transform:uppercase;font-size:2.6rem;line-height:1.05;margin:.2em 0}
+  h2{font-family:'Arial Narrow',Impact,sans-serif;text-transform:uppercase;font-size:1.5rem;margin:2rem 0 .4rem}
+  .panel{background:#fff;border:1px solid rgba(37,40,42,.18);border-radius:4px;padding:1rem 1.1rem;margin:1rem 0}
+  .row{display:flex;flex-wrap:wrap;gap:.5rem}
+  a.b,button.b{font:700 .85rem Arial,sans-serif;padding:.55em 1em;border:1px solid var(--ink);background:#fff;color:var(--ink);
+    border-radius:3px;cursor:pointer;text-decoration:none;display:inline-block}
+  a.b:hover,button.b:hover{background:var(--ink);color:#fff}
+  button.b[aria-pressed=true]{background:var(--navy);color:#fff;border-color:var(--navy)}
+  code{background:#eee9dd;padding:.05em .3em;border-radius:2px;font-size:.9em}
+  .filler p{margin:0 0 1.1rem}
+  #log{font:12px/1.5 ui-monospace,Menlo,monospace;background:#1c1f21;color:#d7e3d0;padding:.8rem;border-radius:4px;max-height:220px;overflow:auto;white-space:pre-wrap}
+
+  /* mock of the ticket alert, same position rules as trpl-float.js */
+  #trpl-float{position:fixed;left:1rem;bottom:1rem;z-index:99999;max-width:22.5rem;background:#FBF9F5;border:1px solid rgba(37,40,42,.2);
+    border-left:6px solid #E7805D;border-radius:4px;box-shadow:0 6px 24px rgba(9,42,77,.25);padding:.95rem 1.05rem .9rem;font-size:.88rem}
+  #trpl-float strong{display:block;font-family:'Arial Narrow',Impact,sans-serif;text-transform:uppercase;font-size:1.2rem;color:#092A4D}
+  @media (max-width:600px){#trpl-float{left:.6rem;right:.6rem;bottom:.6rem;max-width:none}}
+
+  /* mock of the chat launcher, same geometry as the live widget */
+  button.deyra-chatbot-button{position:fixed;right:var(--deyra-btn-horizontal-offset);bottom:var(--deyra-btn-vertical-offset);z-index:1000;
+    height:66px;width:66px;border-radius:9999px;border:1px solid #404040;background:#99ADC5;color:#092A4D;font:500 11px Arial,sans-serif;cursor:pointer}
+  dialog#deyra-chat-modal{margin:auto 20px 20px auto;width:340px;height:420px;border:1px solid #999;border-radius:16px;padding:1rem;font-family:Arial,sans-serif}
+</style>
+</head>
+<body>
+<header id="top-header"><strong>Demo site header</strong><span>fixed to the top, like trlibrary.com</span></header>
+
+<main>
+  <h1>TRPL Popup demo</h1>
+  <p>This page stands in for trlibrary.com. It has a fixed header, a mock ticket alert and a mock chat launcher, so the four pop-up formats can be checked against their neighbours.</p>
+
+  <div class="panel">
+    <h2 style="margin-top:0">Open a format</h2>
+    <div class="row">
+      <a class="b" href="#popup:demo-banner-top">Banner, top</a>
+      <a class="b" href="#popup:demo-banner-bottom">Banner, bottom</a>
+      <a class="b" href="#popup:demo-popup">Pop-up</a>
+      <a class="b" href="#popup:demo-popup-side">Pop-up, image left</a>
+      <a class="b" href="#popup:demo-slidein">Slide-in</a>
+      <a class="b" href="#popup:demo-takeover">Takeover</a>
+    </div>
+    <h2>Neighbours</h2>
+    <div class="row">
+      <button class="b" id="t-float" aria-pressed="false">Ticket alert</button>
+      <button class="b" id="t-chat" aria-pressed="true">Chat launcher</button>
+      <button class="b" id="t-panel" aria-pressed="false">Chat panel open</button>
+    </div>
+    <h2>State</h2>
+    <div class="row">
+      <button class="b" id="t-clear">Clear pop-up state</button>
+      <a class="b" href="?demo=auto&trplpop_debug=1">Reload with automatic pop-ups</a>
+      <a class="b" href="?">Reload plain</a>
+    </div>
+    <p style="font-size:.85rem;margin:.8rem 0 0">Links open pop-ups with <code>href="#popup:&lt;id&gt;"</code>. Automatic mode registers a top banner on load and a slide-in after 50% scroll, and obeys frequency rules: close one and it stays away.</p>
+  </div>
+
+  <div id="log" aria-label="Event log">Events appear here.</div>
+
+  <div class="filler">
+    <h2>Filler copy</h2>
+    <p>Scroll to test the scroll trigger and to see that banners stay put.</p>
+    <script>
+      for (var i = 0; i < 24; i++) document.write("<p>The Library sits on a butte above Medora, North Dakota, where the Badlands open in every direction. This paragraph exists to make the page long enough to scroll.</p>");
+    </script>
+  </div>
+</main>
+
+<button class="deyra-chatbot-button" type="button" data-deyra-chat data-style="sliding-circle" data-position="right-bottom"
+  style="--deyra-btn-vertical-offset: 40px; --deyra-btn-horizontal-offset: 20px;">Ask AI</button>
+<dialog id="deyra-chat-modal"><strong>Mock chat panel</strong><p>Slide-ins step aside while this is open.</p></dialog>
+
+<script src="../popup.js"></script>
+<script>
+(function () {
+  var P = window.TRPLPopup, img = "/demo/sample.svg";
+  var night = { bg:"#25282A", text:"#FFFFFF", head:"#FC924E", btnBg:"#FC924E", btnText:"#25282A" };
+  var sand  = { bg:"#D1CCBD", text:"#25282A", head:"#1B4532", btnBg:"#1B4532", btnText:"#FFFFFF" };
+  var sky   = { bg:"#092A4D", text:"#FFFFFF", head:"#F9D635", btnBg:"#F9D635", btnText:"#092A4D" };
+  var white = { bg:"#FFFFFF", text:"#25282A", head:"#092A4D", btnBg:"#E7805D", btnText:"#25282A" };
+  var tickets = { label:"Reserve tickets", action:"url", value:"https://www.trlibrary.com/tickets", convert:true };
+  var later = { label:"Not now", action:"close", style:"secondary" };
+  var manual = { mode:"gtm" };
+  var samples = [
+    { id:"demo-banner-top", name:"Demo top banner", format:"banner", position:"top", theme:sky, rules:manual,
+      content:{ headline:"Open daily through October", body:"Timed entry. Mornings fill first.", buttons:[tickets] } },
+    { id:"demo-banner-bottom", name:"Demo bottom banner", format:"banner", position:"bottom", theme:night, rules:manual,
+      content:{ headline:"Become a member", body:"Unlimited entry for a year.", buttons:[{ label:"See membership", action:"url", value:"https://www.trlibrary.com/membership", convert:true }] } },
+    { id:"demo-popup", name:"Demo pop-up", format:"popup", size:"m", theme:white, rules:manual,
+      content:{ eyebrow:"Now open", headline:"In the Room", body:"<p>Sixty years on the front lines of history, in photographs.</p>", image:{ url:img, alt:"Placeholder landscape", pos:"top" }, buttons:[tickets, later] } },
+    { id:"demo-popup-side", name:"Demo pop-up, image left", format:"popup", size:"l", theme:sand, rules:manual,
+      content:{ eyebrow:"Plan ahead", headline:"Weekends sell out", body:"<p>Reserve a time before the drive. <a href=\"https://www.trlibrary.com/visit\">Plan a visit</a>.</p>", image:{ url:img, alt:"Placeholder landscape", pos:"left" }, buttons:[tickets, later] } },
+    { id:"demo-slidein", name:"Demo slide-in", format:"slidein", position:"bottom-right", theme:white, rules:manual,
+      content:{ headline:"The Good Citizen podcast", body:"<p>New episodes every other week.</p>", buttons:[{ label:"Listen", action:"url", value:"https://www.trlibrary.com/podcast/good-citizen", convert:true }] } },
+    { id:"demo-takeover", name:"Demo takeover", format:"takeover", theme:night, rules:manual,
+      content:{ eyebrow:"Medora, North Dakota", headline:"Dare greatly", body:"<p>The Library is open. Come and see it for yourself.</p>", image:{ url:img, alt:"", pos:"bg" }, buttons:[tickets, later] } }
+  ];
+  if (/[?&]demo=auto/.test(location.search)) {
+    samples.push({ id:"demo-auto-banner", name:"Auto banner", format:"banner", position:"top", theme:sky,
+      rules:{ sets:[{ trigger:{ type:"load" } }] }, freq:{ close:{ mode:"days", days:30 } },
+      content:{ headline:"Automatic top banner", body:"Close it and reload: it stays away.", buttons:[tickets] } });
+    samples.push({ id:"demo-auto-slidein", name:"Auto slide-in", format:"slidein", position:"bottom-right", theme:white,
+      rules:{ sets:[{ trigger:{ type:"scroll", percent:50 } }] },
+      content:{ headline:"Halfway down", body:"<p>This appeared at 50% scroll.</p>", buttons:[later] } });
+  }
+  samples.forEach(function (c) { c._c = P.checksum(c); P.push(["register", c]); });
+
+  // event log
+  var logEl = document.getElementById("log"), first = true;
+  ["show", "action", "convert", "close"].forEach(function (ev) {
+    P.on(ev, function (d) {
+      if (first) { logEl.textContent = ""; first = false; }
+      logEl.textContent += ev.toUpperCase() + "  " + d.popup_id + "  trigger=" + d.popup_trigger + (d.popup_action ? "  action=" + d.popup_action : "") + "\n";
+      logEl.scrollTop = logEl.scrollHeight;
+    });
+  });
+
+  // neighbours
+  function toggle(btn, on) { btn.setAttribute("aria-pressed", on ? "true" : "false"); }
+  var bFloat = document.getElementById("t-float"), bChat = document.getElementById("t-chat"), bPanel = document.getElementById("t-panel");
+  bFloat.addEventListener("click", function () {
+    var f = document.getElementById("trpl-float");
+    if (f) { f.remove(); toggle(bFloat, false); return; }
+    f = document.createElement("aside");
+    f.id = "trpl-float";
+    f.innerHTML = "<strong>Mock ticket alert</strong>Only 12 tickets left today. This stands in for the real alert.";
+    document.body.appendChild(f);
+    toggle(bFloat, true);
+  });
+  var launcher = document.querySelector(".deyra-chatbot-button"), panel = document.getElementById("deyra-chat-modal");
+  bChat.addEventListener("click", function () {
+    var hidden = launcher.style.display === "none";
+    launcher.style.display = hidden ? "" : "none";
+    toggle(bChat, hidden);
+  });
+  bPanel.addEventListener("click", function () {
+    if (panel.open) panel.close(); else panel.show();
+    toggle(bPanel, panel.open);
+  });
+  launcher.addEventListener("click", function () { bPanel.click(); });
+  document.getElementById("t-clear").addEventListener("click", function () {
+    document.cookie = "trplpop=; path=/; max-age=0";
+    try { localStorage.removeItem("trplpop"); sessionStorage.removeItem("trplpop_s"); } catch (e) {}
+    logEl.textContent = "Pop-up state cleared.\n"; first = false;
+  });
+})();
+</script>
+</body>
+</html>
