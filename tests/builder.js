@@ -3,7 +3,7 @@ const http = require("http"), fs = require("fs"), path = require("path");
 const { chromium } = require("playwright");
 const ROOT = path.resolve(__dirname, ".."), OUT = path.join(__dirname, "out"), PORT = 8766;
 const DIR = process.argv[2] || "builder";
-const MIME = { ".html": "text/html", ".js": "application/javascript", ".json": "application/json", ".svg": "image/svg+xml" };
+const MIME = { ".html": "text/html", ".js": "application/javascript", ".json": "application/json", ".svg": "image/svg+xml", ".css": "text/css" };
 const results = [];
 const check = (n, ok, d) => { results.push({ n, ok: !!ok, d }); console.log((ok ? "  PASS  " : "  FAIL  ") + n + (!ok && d ? "  -> " + d : "")); };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -204,11 +204,19 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       const frame = page.frames().find((x) => x.url().includes("preview.html"));
       const vis = await frame.evaluate(() => { const h = document.querySelector("[data-trplpop]"); if (!h) return false; return !!h.shadowRoot.querySelector(".on"); });
       check("preview shows " + f + " at " + d, vis);
-      if (f === "popup" && d === "desktop") await page.screenshot({ path: path.join(OUT, "builder-step-format.png") });
+      if (f === "popup" && d === "desktop") {
+        await page.screenshot({ path: path.join(OUT, "builder-step-format.png") });
+        const fonts = await frame.evaluate(() => { const r = document.querySelector("[data-trplpop]").shadowRoot; const g = (s) => { const e = r.querySelector(s); return e ? getComputedStyle(e).fontFamily.replace(/"/g, "") : ""; }; let declared = false; document.fonts.forEach((x) => { if (x.family.replace(/["']/g, "") === "Dharma Gothic E") declared = true; }); return { head: g(".head"), body: g(".body"), btn: g(".btn"), declared, links: document.querySelectorAll('link[href$="fonts.css"]').length }; });
+        check("preview loads the website's font list, once", fonts.declared && fonts.links === 1, JSON.stringify(fonts));
+        check("preview pop-up uses the website's fonts: Dharma Gothic E, Clearface, Frutiger", fonts.head.indexOf("Dharma Gothic E,") === 0 && fonts.body.indexOf("Clearface,") === 0 && fonts.btn.indexOf("Frutiger,") === 0, JSON.stringify(fonts));
+      }
     }
   }
   await page.click('[data-dev="desktop"]');
   for (const [n, name] of [[1, "message"], [2, "look"]]) { await go(n); await sleep(500); await page.screenshot({ path: path.join(OUT, "builder-step-" + name + ".png") }); }
+
+  check("Look step says where the fonts come from", await page.evaluate(() => /trlibrary\.com/.test(document.getElementById("fontNote").textContent)));
+  check("builder page itself uses the shared font list", await page.evaluate(() => document.querySelectorAll('link[href$="fonts.css"]').length === 1 && !/@font-face/.test(document.querySelector("style").textContent)));
 
   check("no native browser dialogs were used", dialogs.length === 0, dialogs.join(","));
   check("no script errors in the builder", errors.length === 0, errors.join(" | "));

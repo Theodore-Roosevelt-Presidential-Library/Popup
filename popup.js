@@ -15,7 +15,8 @@
 (function (win, doc) {
   "use strict";
 
-  var VERSION = "1.0.0";
+  var VERSION = "1.1.0";
+  var SELF = (doc.currentScript && doc.currentScript.src) || "";   // where this file was loaded from
   var prior = win.TRPLPopup;
   if (prior && prior.__trplpop) return;                       // already running
   var backlog = prior && prior.length ? [].slice.call(prior) : [];
@@ -44,9 +45,34 @@
     debug: qs.trplpop_debug === "1"
   };
 
-  var FONT_DISPLAY = "'Dharma Gothic E','dharma-gothic-e','Dharma Gothic','Arial Narrow',Impact,sans-serif";
-  var FONT_BODY = "'ITC Clearface','itc-clearface','Clearface',Georgia,serif";
-  var FONT_UI = "Frutiger,'Frutiger Next','Frutiger Next Pro','frutiger-next','Helvetica Neue',Arial,sans-serif";
+  // The website's own font names (trlibrary.com theme), with its size-matched stand-ins, then system fonts.
+  var FONT_DISPLAY = "'Dharma Gothic E','Dharma Gothic E Fallback','Arial Narrow',Impact,sans-serif";
+  var FONT_BODY = "'Clearface','Clearface Fallback',Georgia,serif";
+  var FONT_UI = "'Frutiger','Frutiger Fallback','Helvetica Neue',Arial,sans-serif";
+  var FONT_PROBE = "dharma gothic e";
+  var fontsChecked = false;
+
+  // On trlibrary.com the theme declares the fonts and nothing is added. On a page that does not
+  // (the builder preview, the demo), add fonts.css from beside this file: the same font files, from the website.
+  function ensureFonts() {
+    if (fontsChecked) return;
+    fontsChecked = true;
+    try {
+      if (doc.getElementById("trplpop-fonts")) return;
+      var found = false;
+      if (doc.fonts && doc.fonts.forEach) {
+        doc.fonts.forEach(function (f) {
+          if (String(f.family || "").replace(/["']/g, "").toLowerCase() === FONT_PROBE) found = true;
+        });
+      }
+      if (found) return;
+      var href = site.fontsCss || (SELF ? SELF.split(/[?#]/)[0].replace(/[^\/]*$/, "") + "fonts.css" : "");
+      if (!href) return;
+      var l = doc.createElement("link");
+      l.id = "trplpop-fonts"; l.rel = "stylesheet"; l.href = href;
+      (doc.head || doc.documentElement).appendChild(l);
+    } catch (e) {}
+  }
 
   var Z_OVERLAY = 2147483000, Z_TOP = 100000, Z_BOTTOM = 99990, Z_CORNER = 99995;
 
@@ -640,6 +666,7 @@
   }
   Instance.prototype.build = function () {
     var c = this.c, self = this, ct = c.content || {};
+    ensureFonts();
     var host = doc.createElement("div");
     host.id = "trplpop-" + c.id;
     host.setAttribute("data-trplpop", c.format);
@@ -697,7 +724,7 @@
     // close button
     var x = doc.createElement("button");
     x.type = "button"; x.className = "x"; x.setAttribute("aria-label", "Close");
-    x.appendChild(doc.createTextNode("✕"));
+    x.appendChild(doc.createTextNode("\u2715"));
     x.addEventListener("click", function () { self.close("x"); });
     (c.format === "takeover" ? outer : box).appendChild(x);
 

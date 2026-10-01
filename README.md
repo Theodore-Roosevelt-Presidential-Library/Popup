@@ -40,6 +40,14 @@ To edit: copy the tag's HTML into the builder with **Open an existing pop-up**, 
 
 If the template tag is missing, the settings are: Custom HTML; Support document.write off; Advanced Settings → Tag firing options → Once per page; Triggering → All Pages.
 
+## Fonts
+
+Pop-ups use the website's fonts: Dharma Gothic E for headlines, Clearface for text, Frutiger for buttons and labels. The font files stay on www.trlibrary.com; nothing is hosted here.
+
+- On trlibrary.com the theme already declares them, so pop-ups pick them up by name with no extra request.
+- `fonts.css` is a copy of the theme's font declarations (same names, weights and files). The builder, its preview, the demo and the front page link to it, and `popup.js` adds it by itself on any page where the fonts are missing.
+- If the website's theme changes its font files or names, update `fonts.css` to match.
+
 ## Naming
 
 | Thing | Pattern |
@@ -92,8 +100,8 @@ TRPLPopup.push(["config", { sessionOverlayCap: 1 }]);  // site-wide settings, fr
 ### Running the checks
 
 ```sh
-NODE_PATH=$(npm root -g) node tests/run.js                       # runtime, 130 checks
-NODE_PATH=$(npm root -g) node tests/builder.js                   # builder, 65 checks
+NODE_PATH=$(npm root -g) node tests/run.js                       # runtime, 140 checks
+NODE_PATH=$(npm root -g) node tests/builder.js                   # builder, 69 checks
 ```
 
 Both need Node and Playwright with Chromium. Screenshots go to `tests/out/`.

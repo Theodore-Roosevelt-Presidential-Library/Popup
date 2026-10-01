@@ -6,11 +6,8 @@
 <meta name="description" content="Builds brand-styled pop-ups for trlibrary.com and hands back code to paste into Google Tag Manager.">
 <title>TRPL Popup Builder</title>
 <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../fonts.css">
 <style>
-  @font-face{font-family:'Dharma Gothic E';font-weight:800;font-style:normal;font-display:swap;src:url('https://www.trlibrary.com/themes/custom/trpl/css/dharma_type-dharmagothice-exbold.woff2') format('woff2')}
-  @font-face{font-family:'Clearface';font-weight:400;font-style:normal;font-display:swap;src:url('https://www.trlibrary.com/themes/custom/trpl/css/clearfacestd-regular.woff2') format('woff2')}
-  @font-face{font-family:'Frutiger';font-weight:400;font-style:normal;font-display:swap;src:url('https://www.trlibrary.com/themes/custom/trpl/css/frutigerltstd-regular.woff2') format('woff2')}
-  @font-face{font-family:'Frutiger';font-weight:700;font-style:normal;font-display:swap;src:url('https://www.trlibrary.com/themes/custom/trpl/css/frutigerltstd-bold.woff2') format('woff2')}
   :root{--ink:#25282A;--soft:#54585D;--muted:#6B7075;--line:#D8D5CF;--paper:#FAF9F6;--paper2:#F1EEE8;--sand:#D1CCBD;--orange:#E7805D;--orange-deep:#B4522F;--navy:#092A4D;--forest:#1B4532;--bad:#A8321E;
     --display:'Dharma Gothic E',Impact,'Arial Narrow',sans-serif;--body:'Clearface',Georgia,serif;--ui:'Frutiger',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif}
   *{box-sizing:border-box}
@@ -274,6 +271,7 @@
           <p class="lead">These are the Library&rsquo;s approved color combinations. Pick one.</p>
           <div class="cards" id="presets"></div>
           <div class="verdict" id="contrast"></div>
+          <p class="hint" id="fontNote" style="margin:.7rem 0 0">Fonts are the website&rsquo;s own, loaded from trlibrary.com: Dharma Gothic for headlines, Clearface for text, Frutiger for buttons.</p>
           <details class="more" id="more2">
             <summary>Choose colors one by one</summary>
             <div id="colors"></div>

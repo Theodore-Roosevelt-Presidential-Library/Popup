@@ -501,6 +501,42 @@ async function removeFloat(page) {
     await ctx.close();
   }
 
+  /* ---- 12. website fonts ---- */
+  {
+    const css = fs.readFileSync(path.join(ROOT, "fonts.css"), "utf8");
+    const faces = (css.match(/@font-face\{[^}]*\}/g) || []).filter((f) => f.indexOf("local(") < 0);
+    check("fonts.css takes every font file from the website's theme folder", faces.length >= 6 && faces.every((f) => /src:url\("https:\/\/www\.trlibrary\.com\/themes\/custom\/trpl\/css\/[a-z_-]+\.woff2"\) format\("woff2"\)/.test(f)), faces.length + " faces");
+    const has = (fam, w) => faces.some((f) => f.indexOf('font-family:"' + fam + '";font-weight:' + w + ";font-style:normal") > 0);
+    check("fonts.css declares the weights pop-ups use, under the website's names", has("Dharma Gothic E", 700) && has("Clearface", 400) && has("Clearface", 700) && has("Frutiger", 400) && has("Frutiger", 700));
+
+    const fontOf = (page, id) => page.evaluate((id) => { const r = document.querySelector("#trplpop-" + id).shadowRoot; const f = (s) => getComputedStyle(r.querySelector(s)).fontFamily.replace(/"/g, ""); return { head: f(".head"), body: f(".body"), btn: f(".btn") }; }, id);
+
+    // a page with no fonts of its own
+    let { ctx, page } = await open(browser, "desktop", "/tests/bare.html");
+    check("nothing is added before a pop-up is shown", await page.evaluate(() => !document.getElementById("trplpop-fonts")));
+    const c1 = cfg({ id: "font-a" });
+    await register(page, c1); await shown(page, c1.id, "scrim.on");
+    check("on a page without the fonts, the runtime adds fonts.css from beside popup.js", await page.evaluate(() => { const l = document.getElementById("trplpop-fonts"); return !!l && l.href === location.origin + "/fonts.css"; }));
+    const f1 = await fontOf(page, c1.id);
+    check("headline asks for Dharma Gothic E first", f1.head.indexOf("Dharma Gothic E,") === 0, f1.head);
+    check("body text asks for Clearface first", f1.body.indexOf("Clearface,") === 0, f1.body);
+    check("buttons ask for Frutiger first", f1.btn.indexOf("Frutiger,") === 0, f1.btn);
+    check("the close mark does not depend on the page's text encoding", await page.evaluate((id) => document.querySelector("#trplpop-" + id).shadowRoot.querySelector(".x").textContent === "\u2715", c1.id));
+    const c1b = cfg({ id: "font-b" });
+    await page.keyboard.press("Escape"); await gone(page, c1.id);
+    await page.evaluate((c) => { c._c = window.TRPLPopup.checksum(c); window.TRPLPopup.register(c); window.TRPLPopup.show(c.id, { force: true }); }, c1b); await shown(page, c1b.id, "scrim.on");
+    check("the font list is added once, not once per pop-up", (await page.$$("#trplpop-fonts")).length === 1 && (await page.$$('link[href$="fonts.css"]')).length === 1);
+    await ctx.close();
+
+    // a page that already declares them, as trlibrary.com does
+    ({ ctx, page } = await open(browser, "desktop"));
+    await page.evaluate(() => document.fonts.ready);
+    const c2 = cfg({ id: "font-c" });
+    await register(page, c2); await shown(page, c2.id, "scrim.on");
+    check("on a page that already has the fonts, nothing extra is loaded", await page.evaluate(() => !document.getElementById("trplpop-fonts")));
+    await ctx.close();
+  }
+
   await browser.close();
   srv.close();
   const failed = results.filter((r) => !r.ok);

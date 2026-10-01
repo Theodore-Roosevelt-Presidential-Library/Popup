@@ -5,17 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow, noarchive">
 <title>TRPL Popup — Demo</title>
+<link rel="stylesheet" href="../fonts.css">
 <style>
   :root{--ink:#25282A;--sand:#D1CCBD;--orange:#E7805D;--navy:#092A4D;--paper:#FBF9F5}
   *{box-sizing:border-box}
-  body{margin:0;font-family:Georgia,serif;color:var(--ink);background:var(--paper);line-height:1.6}
+  body{margin:0;font-family:'Clearface','Clearface Fallback',Georgia,serif;color:var(--ink);background:var(--paper);line-height:1.6}
   #top-header{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(0,0,0,.78);color:#fff;
     display:flex;align-items:center;gap:1rem;padding:0 1.25rem;height:64px;font-family:Arial,sans-serif}
   #top-header strong{letter-spacing:.08em;text-transform:uppercase;font-size:.85rem}
   #top-header span{opacity:.7;font-size:.8rem}
   main{max-width:880px;margin:0 auto;padding:96px 1.25rem 4rem}
-  h1{font-family:'Arial Narrow',Impact,sans-serif;text-transform:uppercase;font-size:2.6rem;line-height:1.05;margin:.2em 0}
-  h2{font-family:'Arial Narrow',Impact,sans-serif;text-transform:uppercase;font-size:1.5rem;margin:2rem 0 .4rem}
+  h1{font-family:'Dharma Gothic E','Dharma Gothic E Fallback','Arial Narrow',Impact,sans-serif;font-weight:700;text-transform:uppercase;font-size:2.6rem;line-height:1.05;margin:.2em 0}
+  h2{font-family:'Dharma Gothic E','Dharma Gothic E Fallback','Arial Narrow',Impact,sans-serif;font-weight:700;text-transform:uppercase;font-size:1.5rem;margin:2rem 0 .4rem}
   .panel{background:#fff;border:1px solid rgba(37,40,42,.18);border-radius:4px;padding:1rem 1.1rem;margin:1rem 0}
   .row{display:flex;flex-wrap:wrap;gap:.5rem}
   a.b,button.b{font:700 .85rem Arial,sans-serif;padding:.55em 1em;border:1px solid var(--ink);background:#fff;color:var(--ink);
@@ -29,7 +30,7 @@
   /* mock of the ticket alert, same position rules as trpl-float.js */
   #trpl-float{position:fixed;left:1rem;bottom:1rem;z-index:99999;max-width:22.5rem;background:#FBF9F5;border:1px solid rgba(37,40,42,.2);
     border-left:6px solid #E7805D;border-radius:4px;box-shadow:0 6px 24px rgba(9,42,77,.25);padding:.95rem 1.05rem .9rem;font-size:.88rem}
-  #trpl-float strong{display:block;font-family:'Arial Narrow',Impact,sans-serif;text-transform:uppercase;font-size:1.2rem;color:#092A4D}
+  #trpl-float strong{display:block;font-family:'Dharma Gothic E','Dharma Gothic E Fallback','Arial Narrow',Impact,sans-serif;font-weight:700;text-transform:uppercase;font-size:1.2rem;color:#092A4D}
   @media (max-width:600px){#trpl-float{left:.6rem;right:.6rem;bottom:.6rem;max-width:none}}
 
   /* mock of the chat launcher, same geometry as the live widget */
