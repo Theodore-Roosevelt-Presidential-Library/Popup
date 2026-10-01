@@ -2,14 +2,10 @@
  * TRPL Popup Builder
  * Designs a pop-up, previews it with the real runtime, and hands back code to paste into
  * Google Tag Manager. The builder cannot change the live site: nothing here publishes.
- *
- * The four-digit code is a courtesy gate, not security (this is a static, public page).
- * To change it, run:  python3 scripts/set_code.py 1234
  */
 (function () {
   "use strict";
 
-  var GATE = { salt: "fbbd1d0f1033e6b9", hash: "a9838aa40cf7867ab1a679dc68deb801dcbfad6b60c0f02be06d0d8ad02fd0b8" };
   var TZ = "America/Denver";
   var P = window.TRPLPopup;
   var $ = function (s, el) { return (el || document).querySelector(s); };
@@ -680,7 +676,6 @@
   }
 
   function start() {
-    $("#gate").hidden = true; $("#app").hidden = false;
     var fromHash = /#c=/.test(window.location.hash) ? parseImport(window.location.hash) : null;
     if (fromHash && fromHash.format) { try { S = fromConfig(fromHash); } catch (e) { S = null; } }
     else { try { var d = JSON.parse(localStorage.getItem("trplpop_builder_draft") || "null"); if (d && d.content && d.sets && d.theme && d.freq) { d.content.body = cleanBody(String(d.content.body || "")); S = d; } } catch (e) { S = null; } }
@@ -691,26 +686,6 @@
     if (frameReady) sendPreview();
   }
 
-  /* ------------------------------------------------------------------ */
-  /* Gate                                                                */
-  /* ------------------------------------------------------------------ */
-  function sha256(str) {
-    return crypto.subtle.digest("SHA-256", new TextEncoder().encode(str)).then(function (buf) {
-      return [].map.call(new Uint8Array(buf), function (b) { return (b < 16 ? "0" : "") + b.toString(16); }).join("");
-    });
-  }
-  var remembered = ""; try { remembered = localStorage.getItem("trplpop_gate") || ""; } catch (e) {}
-  if (remembered === GATE.hash) start();
-  else {
-    $("#gateForm").addEventListener("submit", function (e) {
-      e.preventDefault();
-      var code = $("#code").value.trim();
-      if (!window.crypto || !crypto.subtle) { $("#gateErr").textContent = "This page needs a secure (https) connection."; return; }
-      sha256(GATE.salt + ":" + code).then(function (h) {
-        if (h === GATE.hash) { try { localStorage.setItem("trplpop_gate", h); } catch (err) {} start(); }
-        else { $("#gateErr").textContent = "That code is not right."; $("#code").value = ""; $("#code").focus(); }
-      });
-    });
-  }
+  start();
   window.__trplBuilder = { toConfig: toConfig, fromConfig: function (c) { S = fromConfig(c); renderAll(); }, snippet: snippet, parseImport: parseImport, localToISO: localToISO, isoToLocal: isoToLocal, state: function () { return S; } };
 })();

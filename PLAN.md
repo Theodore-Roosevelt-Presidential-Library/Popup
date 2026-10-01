@@ -8,7 +8,7 @@ Home: `https://popup.labs.trlibrary.com` (GitHub Pages, this repo).
 | Piece | State |
 |---|---|
 | Runtime `popup.js`: four formats, page rules, triggers, frequency, queue, ticket alert, chat launcher and fixed-header handling, data-layer events, JavaScript interface | Built. 130 automated checks pass at phone, tablet and desktop widths. |
-| Builder: gate, editor, brand presets, sitemap page rules, live preview, Copy for GTM, import, share link | Built. 45 automated checks pass. |
+| Builder: editor, brand presets, sitemap page rules, live preview, Copy for GTM, import, share link | Built at `/builder/`. 42 automated checks pass. |
 | Demo page | Built (`/demo/`). |
 | Sitemap copy and nightly refresh job | Built. The job starts once the repo is pushed. Confirmed that trlibrary.com does not allow its sitemap to be read from another domain, so the copy is needed. |
 | One-time GTM import file | Written, not yet imported into GTM. GTM shows every change before confirming. |
@@ -38,7 +38,7 @@ Replace OptinMonster with an in-house pop-up system that TRPL staff can run with
 | Who can put a pop-up on the site | Only people with GTM publish rights. Nobody else, whatever they can open or read (section 14). |
 | GTM hand-off | Copy and paste. No GTM setting is typed by hand; the builder states the exact settings (section 10). |
 | Page rules | The builder knows the site's sitemap and shows which pages a rule matches (section 7). |
-| Builder access | Behind a four-digit code, at an unlisted path, marked not searchable. A courtesy gate, not a lock; the builder cannot change the live site, so that is enough (section 14). |
+| Builder access | Open, at `/builder/`, linked from the front page. The four-digit code, unlisted folder and no-index rules were removed on 2026-10-01 once publishing moved to GTM: the builder cannot change the live site, so there was nothing left for them to protect. |
 
 ## 3. What exists today
 
@@ -77,8 +77,8 @@ GTM (per pop-up) ─registers─▶ the pop-up's settings with popup.js
 Proposed repo layout:
 
 ```
-index.html              plain landing page; no link to the builder
-<unlisted folder>/      builder page, script and preview frame
+index.html              landing page with links to the builder and the demo
+builder/                builder page, script and preview frame
 popup.js                runtime (evergreen URL)
 data/sitemap.json       site paths, refreshed nightly by a GitHub Action
 gtm/trpl-popup-setup.json   one-time GTM import: loader, template tag, GA4 tag, trigger, variables
@@ -345,13 +345,7 @@ Accuracy: reliable for country and state; weaker for city, especially for rural 
 
 **Pop-ups contain no script.** The snippet holds structured settings only: known block types, sanitised text, `https` links and the fixed action list. The runtime ignores anything else.
 
-**Builder access.** The builder cannot change anything live, so a light gate is enough:
-
-- a four-digit code asked for once per browser;
-- an unlisted path, with the site's front page linking nowhere and the tool left off the Labs listing;
-- `noindex` on the builder page and a `robots.txt` that disallows the whole subdomain without naming the path.
-
-The site is static and the repo is public, so the code is checked in the browser and the builder's path is visible in the repo. Anyone who reads the source can get past both, and gains only a design tool.
+**Builder access.** The builder is open at `/builder/`. It cannot change anything live, so it needs no gate; the controls that matter are GTM publish rights and write access to this repo.
 
 **Things to know.**
 
@@ -376,7 +370,7 @@ The site is static and the repo is public, so the code is checked in the browser
 **Phase 1 — Runtime.** `popup.js`, the four formats, phase-1 rules, frequency state, zone and queue logic, data-layer events, the JavaScript interface, the demo page and automated checks.
 *Done when:* all four formats pass the checks at three widths on the demo page, alongside the real ticket alert.
 
-**Phase 2 — Builder.** Editor, brand presets, previews, access gate, sitemap-aware page rules, Copy for GTM with instructions, the one-time GTM import file, share link, import.
+**Phase 2 — Builder.** Editor, brand presets, previews, sitemap-aware page rules, Copy for GTM with instructions, the one-time GTM import file, share link, import.
 *Done when:* a pop-up can be built, pasted into GTM, seen in GTM preview on the live site, and re-imported into the builder without loss.
 
 **Phase 3 — Cutover.** Import the one-time setup file into a GTM workspace and test in preview mode; publish with no campaigns; rebuild OptinMonster campaigns one at a time, pausing each original; pause the OptinMonster tag; cancel the subscription after two clean weeks. Write the runbook in Outline.

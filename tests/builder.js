@@ -1,9 +1,8 @@
-/* Builder checks.  NODE_PATH=$(npm root -g) node tests/builder.js <builder-folder> <code> */
+/* Builder checks.  NODE_PATH=$(npm root -g) node tests/builder.js */
 const http = require("http"), fs = require("fs"), path = require("path");
 const { chromium } = require("playwright");
 const ROOT = path.resolve(__dirname, ".."), OUT = path.join(__dirname, "out"), PORT = 8766;
-const DIR = process.argv[2], CODE = process.argv[3];
-if (!DIR || !CODE) { console.error("usage: node tests/builder.js <builder-folder> <code>"); process.exit(2); }
+const DIR = process.argv[2] || "builder";
 const MIME = { ".html": "text/html", ".js": "application/javascript", ".json": "application/json", ".svg": "image/svg+xml" };
 const results = [];
 const check = (n, ok, d) => { results.push({ n, ok: !!ok, d }); console.log((ok ? "  PASS  " : "  FAIL  ") + n + (!ok && d ? "  -> " + d : "")); };
@@ -30,13 +29,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const URL = "http://localhost:" + PORT + "/" + DIR + "/";
   await page.goto(URL);
 
-  check("builder is hidden behind the code", await page.isVisible("#gate") && !(await page.isVisible("#app")));
-  await page.fill("#code", "0000"); await page.click("#gate button"); await sleep(300);
-  check("a wrong code is refused", await page.isVisible("#gate") && (await page.textContent("#gateErr")).length > 0);
-  await page.fill("#code", CODE); await page.click("#gate button");
-  await page.waitForSelector("#app:not([hidden])");
-  check("the right code opens the builder", await page.isVisible("#app"));
-  check("page is marked noindex", (await page.getAttribute('meta[name="robots"]', "content")).includes("noindex"));
+  await page.waitForSelector("#formats .card");
+  check("the builder opens directly, with no code to enter", (await page.isVisible("#app")) && !(await page.$("#gate")) && !(await page.$("#code")));
+  const home = await ctx.newPage(); await home.goto("http://localhost:" + PORT + "/");
+  check("the front page links to the builder", (await home.getAttribute('a[href="builder/"]', "href")) === "builder/");
+  await home.close();
   await page.waitForFunction(() => document.querySelector("[data-match]") && /Matches/.test(document.querySelector("[data-match]").textContent), null, { timeout: 5000 });
 
   // empty builder blocks copying
@@ -107,11 +104,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   // share link
   await page.click("#btnShare"); await sleep(150);
   const link = await page.evaluate(() => navigator.clipboard.readText());
-  // a different browser: no saved draft, and the code must be entered again
+  // a different browser, so there is no saved draft to fall back on
   const ctx2 = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const p2 = await ctx2.newPage(); await p2.goto(link);
-  check("a share link still asks a new browser for the code", await p2.isVisible("#gate"));
-  await p2.fill("#code", CODE); await p2.click("#gate button"); await p2.waitForSelector("#app:not([hidden])"); await sleep(400);
+  await p2.waitForSelector("#formats .card"); await sleep(400);
   check("a share link reopens the same pop-up in a different browser", (await p2.evaluate(() => JSON.stringify(window.__trplBuilder.toConfig()))) === before);
   await p2.goto(URL + "#c=THIS-IS-NOT-A-VALID-LINK"); await p2.reload(); await sleep(400);
   check("a broken share link leaves the builder working (it falls back to the saved draft)", (await p2.$$("#formats .card")).length === 5 && (await p2.$$("#presets .card")).length === 9);

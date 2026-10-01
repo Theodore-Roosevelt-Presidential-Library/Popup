@@ -3,7 +3,7 @@
 In-house replacement for OptinMonster on trlibrary.com. Three static pieces, served by GitHub Pages at `https://popup.labs.trlibrary.com`:
 
 - **`popup.js`**: the runtime. Google Tag Manager loads it on every page. It decides which pop-up shows, where and how often.
-- **The builder** (in the folder with the odd name): designs a pop-up in the brand system, previews it with the real runtime, and hands back code to paste into GTM.
+- **The builder** (`/builder/`): designs a pop-up in the brand system, previews it with the real runtime, and hands back code to paste into GTM.
 - **`gtm/trpl-popup-setup.json`**: a one-time GTM import that creates the loader tag, a template tag to copy, the GA4 event tag, its trigger and six variables.
 
 Pop-ups live in GTM, one Custom HTML tag each. Only people who can publish the GTM container can put a pop-up on the site. The builder cannot change the live site, and pop-up settings are data: the runtime never runs code from a pop-up.
@@ -30,7 +30,7 @@ All formats are responsive. On phones, slide-ins and bottom banners wait while t
 
 ## Making a pop-up
 
-1. Open the builder and enter the four-digit code.
+1. Open the builder at `https://popup.labs.trlibrary.com/builder/`.
 2. Fill in the six panels. Panel 4 lists the pages a rule matches, from a nightly copy of the site's sitemap.
 3. Click **Copy for GTM**. The builder shows the tag name and version name to use.
 4. In GTM: Tags → `TRPL Popup – TEMPLATE (copy me)` → ⋮ → Copy. Rename the copy, select everything in the HTML box, paste, Save.
@@ -93,7 +93,7 @@ TRPLPopup.push(["config", { sessionOverlayCap: 1 }]);  // site-wide settings, fr
 
 ```sh
 NODE_PATH=$(npm root -g) node tests/run.js                       # runtime, 130 checks
-NODE_PATH=$(npm root -g) node tests/builder.js <builder-folder> <code>   # builder, 45 checks
+NODE_PATH=$(npm root -g) node tests/builder.js                   # builder, 42 checks
 ```
 
 Both need Node and Playwright with Chromium. Screenshots go to `tests/out/`.
@@ -102,11 +102,10 @@ Both need Node and Playwright with Chromium. Screenshots go to `tests/out/`.
 
 - `scripts/fetch_sitemap.py` refreshes `data/sitemap.json`. `.github/workflows/sitemap.yml` runs it nightly. If that file is not in the repo yet, create it from `scripts/sitemap.workflow.yml`:
   `mkdir -p .github/workflows && git mv scripts/sitemap.workflow.yml .github/workflows/sitemap.yml`
-- `scripts/set_code.py 1234` changes the builder's four-digit code.
 
 ## Known limits
 
-- The four-digit code and the unlisted folder are a courtesy gate. This is a static page in a public repo; anyone who reads the source can get past both, and gains only a design tool.
+- The builder is open to anyone with the address. That is by design: it is a design tool and cannot change the live site. Publishing happens only in GTM.
 - A published GTM container is public, so a pop-up scheduled for a future date is readable by anyone who inspects it. Keep embargoed copy in an unpublished GTM workspace until release.
 - Safari keeps script-written cookies for about seven days, so "30 days" behaves as roughly seven for Safari visitors who do not return within the week.
 - The Constant Contact form block is unproven until tried on the live site with a real form.

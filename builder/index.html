@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="description" content="Builds brand-styled pop-ups for trlibrary.com and hands back code to paste into Google Tag Manager.">
 <title>TRPL Popup Builder</title>
 <style>
   :root{--ink:#25282A;--muted:#6b6f72;--line:#d9d5ca;--paper:#FBF9F5;--sand:#D1CCBD;--orange:#E7805D;--navy:#092A4D;--forest:#1B4532;--bad:#a8321e;--ok:#1B4532;
@@ -14,15 +14,6 @@
   button,input,select,textarea{font:inherit;color:inherit}
   h1{font-size:15px;letter-spacing:.08em;text-transform:uppercase;margin:0}
   [hidden]{display:none !important}
-
-  /* gate */
-  #gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--navy);color:#fff;padding:16px}
-  #gate form{width:100%;max-width:320px;text-align:center}
-  #gate h1{margin-bottom:.4rem}
-  #gate p{opacity:.8;margin:.2rem 0 1.1rem}
-  #code{width:100%;font-size:30px;letter-spacing:.5em;text-align:center;padding:.4em .2em .4em .7em;border:2px solid #fff;border-radius:4px;background:transparent;color:#fff}
-  #gate button{margin-top:.9rem;width:100%;padding:.7em;border:0;border-radius:3px;background:var(--orange);color:var(--ink);font-weight:700;cursor:pointer}
-  #gate .err{min-height:1.4em;color:#ffd2c4;margin-top:.6rem}
 
   /* shell */
   #app{display:grid;grid-template-rows:auto 1fr;height:100%}
@@ -124,17 +115,7 @@
 </head>
 <body>
 
-<div id="gate">
-  <form id="gateForm" autocomplete="off">
-    <h1>TRPL Popup Builder</h1>
-    <p>Enter the four-digit code.</p>
-    <input id="code" inputmode="numeric" pattern="[0-9]*" maxlength="4" aria-label="Four-digit code" autofocus>
-    <button type="submit">Open</button>
-    <div class="err" id="gateErr" role="alert"></div>
-  </form>
-</div>
-
-<div id="app" hidden>
+<div id="app">
   <div class="top">
     <h1>TRPL Popup Builder</h1>
     <span class="sp"></span>
