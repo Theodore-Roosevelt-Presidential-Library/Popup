@@ -8,7 +8,7 @@ Home: `https://popup.labs.trlibrary.com` (GitHub Pages, this repo).
 | Piece | State |
 |---|---|
 | Runtime `popup.js`: four formats, page rules, triggers, frequency, queue, ticket alert, chat launcher and fixed-header handling, data-layer events, JavaScript interface | Built. 130 automated checks pass at phone, tablet and desktop widths. |
-| Builder: editor, brand presets, sitemap page rules, live preview, Copy for GTM, import, share link | Built at `/builder/`. 42 automated checks pass. |
+| Builder: editor, brand presets, sitemap page rules, live preview, Copy the code, open existing, share link | Built at `/builder/` as a five-step guided flow in plain language. 65 automated checks pass. |
 | Demo page | Built (`/demo/`). |
 | Sitemap copy and nightly refresh job | Built. The job starts once the repo is pushed. Confirmed that trlibrary.com does not allow its sitemap to be read from another domain, so the copy is needed. |
 | One-time GTM import file | Written, not yet imported into GTM. GTM shows every change before confirming. |
@@ -246,7 +246,7 @@ Rules that keep it clean:
 
 ### New pop-up
 
-1. Builder: **Copy for GTM**. The builder also shows the tag name to use.
+1. Builder, Publish step: **Copy the code**. The builder also shows the tag name to use.
 2. GTM: **Tags → `TRPL Popup – TEMPLATE (copy me)` → ⋮ → Copy**. The copy inherits the trigger and firing option.
 3. Rename the copy to the name the builder gave, select everything in the HTML box, paste.
 4. **Save → Preview**, check the pop-up on the site, then **Submit** using the version name the builder gave.
@@ -255,7 +255,7 @@ If the template tag is ever missing, the settings to reproduce are: Tag type **C
 
 ### Edit or take down
 
-- **Edit:** in the builder, **Import** the tag's current HTML, change it, **Copy for GTM**; in GTM open the tag, replace the HTML, Save, Submit.
+- **Edit:** in the builder, **Open an existing pop-up**, paste the tag's current HTML, change it, **Copy the code**; in GTM open the tag, replace the HTML, Save, Submit.
 - **Take down:** on the tag, **⋮ → Pause**, then Submit.
 
 ### The snippet
@@ -324,14 +324,14 @@ Accuracy: reliable for country and state; weaker for city, especially for rural 
 
 ## 13. Builder
 
-- Format picker, then content, design, rules, frequency, and publish panels.
+- Five guided steps: Format, Message, Look, Where & when, Publish. Plain-language labels; less common settings (reference name, hand-written rules, extra conditions, GTM-fired mode, priority, the raw code) sit under "More options" in each step. Problems link back to the step that fixes them.
 - **Brand presets:** the eight approved pairings from the rsvp.labs builder, with fonts and colours from `Brand/brand.json`. Colour pickers are limited to the brand palette.
 - **Guardrails:** live contrast check; accent colours restricted to headlines per the guidelines; a copy check for house terminology from `brand.json`.
 - **Fonts:** Dharma Gothic E, ITC Clearface and Frutiger Next resolve from the host page where it loads them; otherwise an optional font stylesheet URL; otherwise the same fallbacks the ticket alert uses.
 - **Images:** hosted on Drupal or the DAM and pasted as URLs, as with rsvp.labs.
 - **Preview:** desktop, tablet and phone frames, with a mock ticket alert and chat launcher that can be toggled on.
 - **Page rules:** section picker, page search and live match list from the sitemap (section 7).
-- **Hand-offs:** one **Copy for GTM** button, with the tag name, version name and exact GTM steps shown beside it (section 10); import from a pasted snippet; a share link for passing a draft to a colleague.
+- **Hand-offs:** one **Copy the code** button, with the tag name, version name and exact GTM steps shown beside it (section 10); **Copy everything to send to a colleague** for handing the GTM step to someone else; open an existing pop-up from a pasted snippet; a share link for passing a draft to a colleague.
 - **Inventory:** the list of pop-ups is the list of *TRPL Popup* tags in GTM.
 - In-page overlays only; no native `alert`, `confirm` or `prompt`.
 
@@ -370,7 +370,7 @@ Accuracy: reliable for country and state; weaker for city, especially for rural 
 **Phase 1 — Runtime.** `popup.js`, the four formats, phase-1 rules, frequency state, zone and queue logic, data-layer events, the JavaScript interface, the demo page and automated checks.
 *Done when:* all four formats pass the checks at three widths on the demo page, alongside the real ticket alert.
 
-**Phase 2 — Builder.** Editor, brand presets, previews, sitemap-aware page rules, Copy for GTM with instructions, the one-time GTM import file, share link, import.
+**Phase 2 — Builder.** Editor, brand presets, previews, sitemap-aware page rules, Copy the code with instructions, the one-time GTM import file, share link, import.
 *Done when:* a pop-up can be built, pasted into GTM, seen in GTM preview on the live site, and re-imported into the builder without loss.
 
 **Phase 3 — Cutover.** Import the one-time setup file into a GTM workspace and test in preview mode; publish with no campaigns; rebuild OptinMonster campaigns one at a time, pausing each original; pause the OptinMonster tag; cancel the subscription after two clean weeks. Write the runbook in Outline.

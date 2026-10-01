@@ -31,12 +31,12 @@ All formats are responsive. On phones, slide-ins and bottom banners wait while t
 ## Making a pop-up
 
 1. Open the builder at `https://popup.labs.trlibrary.com/builder/`.
-2. Fill in the six panels. Panel 4 lists the pages a rule matches, from a nightly copy of the site's sitemap.
-3. Click **Copy for GTM**. The builder shows the tag name and version name to use.
+2. Work through the five steps: Format, Message, Look, Where & when, Publish. Step 4 counts the pages the pop-up will appear on, from a nightly copy of the site's sitemap. Less common settings sit under **More options** in each step.
+3. On the Publish step, click **Copy the code**. The builder shows the tag name and version name to use. **Copy everything to send to a colleague** copies the code and the GTM steps together.
 4. In GTM: Tags → `TRPL Popup – TEMPLATE (copy me)` → ⋮ → Copy. Rename the copy, select everything in the HTML box, paste, Save.
 5. Preview, check it on the site, Submit.
 
-To edit: copy the tag's HTML into the builder with **Import code**, change it, copy it back over the old HTML. To take one down: pause its tag.
+To edit: copy the tag's HTML into the builder with **Open an existing pop-up**, change it, copy it back over the old HTML. To take one down: pause its tag.
 
 If the template tag is missing, the settings are: Custom HTML; Support document.write off; Advanced Settings → Tag firing options → Once per page; Triggering → All Pages.
 
@@ -93,7 +93,7 @@ TRPLPopup.push(["config", { sessionOverlayCap: 1 }]);  // site-wide settings, fr
 
 ```sh
 NODE_PATH=$(npm root -g) node tests/run.js                       # runtime, 130 checks
-NODE_PATH=$(npm root -g) node tests/builder.js                   # builder, 42 checks
+NODE_PATH=$(npm root -g) node tests/builder.js                   # builder, 65 checks
 ```
 
 Both need Node and Playwright with Chromium. Screenshots go to `tests/out/`.

@@ -44,19 +44,21 @@
   ];
 
   var FORMATS = [
-    { key: "banner-top", label: "Banner, top", note: "Folds down, pushes the page", format: "banner", pos: "top", tag: "banner-top" },
-    { key: "banner-bottom", label: "Banner, bottom", note: "Folds up from the bottom", format: "banner", pos: "bottom", tag: "banner-bottom" },
-    { key: "popup", label: "Pop-up", note: "Panel over a dimmed page", format: "popup", tag: "pop-up" },
-    { key: "slidein", label: "Slide-in", note: "Corner card", format: "slidein", tag: "slide-in" },
-    { key: "takeover", label: "Takeover", note: "Fills the window", format: "takeover", tag: "takeover" }
+    { key: "banner-top", label: "Banner, top", note: "A strip across the top of the page", format: "banner", pos: "top", tag: "banner-top" },
+    { key: "banner-bottom", label: "Banner, bottom", note: "A strip along the bottom", format: "banner", pos: "bottom", tag: "banner-bottom" },
+    { key: "popup", label: "Pop-up", note: "A panel in the middle of the page", format: "popup", tag: "pop-up" },
+    { key: "slidein", label: "Slide-in", note: "A small card in the corner", format: "slidein", tag: "slide-in" },
+    { key: "takeover", label: "Takeover", note: "Fills the whole window", format: "takeover", tag: "takeover" }
   ];
   var ACTIONS = [
-    ["url", "Go to a web address", "https://www.trlibrary.com/…"], ["close", "Close the pop-up", ""], ["popup", "Open another pop-up", "its id"],
-    ["tel", "Call a phone number", "+17015551234"], ["mailto", "Start an email", "name@trlibrary.com"], ["copy", "Copy text", "text to copy"],
-    ["event", "Send an event to GTM", "event_name"]
+    /* [value, what it does, placeholder, label for its value, common?] */
+    ["url", "Opens a web page", "https://www.trlibrary.com/tickets", "Web address", 1], ["close", "Closes the pop-up", "", "", 1],
+    ["tel", "Calls a phone number", "+17015551234", "Phone number", 0], ["mailto", "Starts an email", "name@trlibrary.com", "Email address", 0],
+    ["copy", "Copies text, such as a promo code", "WELCOME10", "Text to copy", 0], ["popup", "Opens another pop-up", "2026-10-fall-membership", "Reference name of the other pop-up", 0],
+    ["event", "Sends a signal to Google Tag Manager", "membership_click", "Signal name", 0]
   ];
-  var TRIGGERS = [["load", "As soon as the page loads"], ["delay", "After a number of seconds"], ["scroll", "After scrolling part of the page"], ["exit", "When the visitor moves to leave"], ["none", "Only from a link or button"]];
-  var OPS = [["starts", "starts with"], ["contains", "contains"], ["is", "is exactly"], ["ends", "ends with"], ["regex", "matches pattern"]];
+  var TRIGGERS = [["load", "Right away"], ["delay", "After a number of seconds"], ["scroll", "After scrolling this far down (percent)"], ["exit", "When someone is about to leave"], ["none", "Only when a link opens it"]];
+  var OPS = [["starts", "Address starts with"], ["contains", "Address contains"], ["is", "Address is exactly"], ["ends", "Address ends with"], ["regex", "Matches a pattern (advanced)"]];
   var STANDING = [
     { t: "path", op: "ends", v: "/print" }, { t: "path", op: "starts", v: "/tickets" }, { t: "path", op: "starts", v: "/rsvp" },
     { t: "path", op: "starts", v: "/privacy" }, { t: "path", op: "starts", v: "/node/" }, { t: "path", op: "starts", v: "/user" }
@@ -119,7 +121,7 @@
     function close() { m.hidden = true; document.removeEventListener("keydown", onKey, true); if (prev && prev.focus) prev.focus(); }
     function onKey(e) { if (e.key === "Escape") { e.stopPropagation(); close(); } }
     (opts.buttons || [{ label: "OK", primary: true }]).forEach(function (bt) {
-      var btn = el("button", { type: "button", "class": "mini" + (bt.primary ? " pri" : "") }); btn.textContent = bt.label;
+      var btn = el("button", { type: "button", "class": "mini-btn" + (bt.primary ? " pri" : "") }); btn.textContent = bt.label;
       btn.addEventListener("click", function () { if (!bt.onClick || bt.onClick() !== false) close(); });
       acts.appendChild(btn);
     });
@@ -133,7 +135,7 @@
   function newSet() { return { include: [], exclude: clone(STANDING), conds: [], match: "all", trigger: { type: "load", seconds: 5, percent: 50 } }; }
   function blank() {
     return {
-      name: "", id: "", idTouched: false, isEdit: false,
+      name: "", id: "", idTouched: false, isEdit: false, btn2: false, whereSome: false,
       format: "popup", bannerPos: "top", slidePos: "bottom-right", size: "m", backdropClose: true, priority: 5,
       presetName: "White", theme: { bg: "#FFFFFF", text: "#25282A", head: "#092A4D", btnBg: "#E7805D", btnText: "#25282A" },
       content: {
@@ -180,7 +182,7 @@
       ct.image = { url: sc.image.url.trim(), alt: sc.image.alt.trim(), pos: sc.image.pos };
       if (S.hideImagePhone) ct.hide = { image: "phone" };
     }
-    ct.buttons = sc.buttons.filter(function (b) { return b.label.trim(); }).map(function (b, i) {
+    ct.buttons = sc.buttons.filter(function (b, i) { return b.label.trim() && (i === 0 || S.btn2); }).map(function (b, i) {
       var o = { label: b.label.trim(), action: b.action };
       if (b.action !== "close") o.value = String(b.value || "").trim();
       if (b.action === "url" && b.newTab) o.newTab = true;
@@ -240,6 +242,7 @@
     if (im.url) s.content.image = { url: str(im.url, 500), alt: str(im.alt, 140), pos: oneOf(im.pos, ["top", "left", "right", "bg"], "top") };
     s.hideImagePhone = obj(ct.hide).image === "phone";
     arr(ct.buttons).slice(0, 2).forEach(function (b, i) { b = obj(b); s.content.buttons[i] = { label: str(b.label, 40), action: oneOf(b.action, ACTIONS.map(function (a) { return a[0]; }), "url"), value: str(b.value, 500), newTab: !!b.newTab, convert: !!b.convert }; });
+    s.btn2 = !!s.content.buttons[1].label;
     var fm = obj(ct.form);
     if (fm.formId) s.content.form = { formId: str(fm.formId, 64), fallbackUrl: str(fm.fallbackUrl, 500), fallbackLabel: str(fm.fallbackLabel, 40) };
     s.mode = r.mode === "gtm" ? "gtm" : "auto";
@@ -254,6 +257,7 @@
       return { include: arr(x.include).map(importCond), exclude: arr(x.exclude).map(importCond), conds: arr(x.conds).map(importCond), match: x.match === "any" ? "any" : "all",
         trigger: { type: oneOf(t.type, TRIGGERS.map(function (g) { return g[0]; }), "load"), seconds: Math.max(0, Math.min(600, +t.seconds || 0)) || (t.seconds === 0 ? 0 : 5), percent: Math.max(1, Math.min(100, +t.percent || 50)) } };
     });
+    s.whereSome = s.sets[0].include.length > 0;
     var f = obj(c.freq), fc = obj(f.close), fv = obj(f.convert);
     if (f.close) s.freq.close = { mode: oneOf(fc.mode, ["days", "session", "always", "never"], "days"), days: Math.max(1, Math.min(400, +fc.days || 30)) };
     if (f.convert) s.freq.convert = { mode: oneOf(fv.mode, ["days", "never"], "days"), days: Math.max(1, Math.min(400, +fv.days || 365)) };
@@ -295,12 +299,31 @@
   }
 
   /* ------------------------------------------------------------------ */
-  /* Page rules and the sitemap                                          */
+  /* Pages, in plain words                                               */
   /* ------------------------------------------------------------------ */
+  var SECTION_NAMES = {
+    visit: "Plan a visit", tr: "T.R. history", video: "Videos", quiz: "Quizzes", podcast: "Podcast", about: "About the Library",
+    "staff-members": "Staff pages", calendar: "Calendar and events", support: "Support and giving", membership: "Membership",
+    tickets: "Tickets", research: "Research", project: "Project updates", "grand-opening": "Grand opening",
+    "private-events": "Private events", press: "Press"
+  };
+  var HIDDEN_SECTIONS = { node: 1, privacy: 1, rsvp: 1, user: 1 };
+  var STANDING_NAMES = [["ends", "/print", "Print views"], ["starts", "/tickets", "Ticket pages"], ["starts", "/rsvp", "RSVP pages"],
+    ["starts", "/privacy", "Privacy page"], ["starts", "/node/", "Pages without a proper address"], ["starts", "/user", "Staff sign-in pages"]];
+  var STEPS = ["Format", "Message", "Look", "Where & when", "Publish"];
+  var FREQ_CLOSE = [["days:1", "Wait a day, then it can show again"], ["days:7", "Wait a week"], ["days:30", "Wait 30 days"], ["days:90", "Wait 90 days"],
+    ["session", "Show it again on their next visit"], ["always", "Keep showing it every time"], ["never", "Never show it to them again"]];
+  var FREQ_CONV = [["days:30", "Leave them alone for 30 days"], ["days:90", "Leave them alone for 90 days"], ["days:365", "Leave them alone for a year"], ["never", "Never show it to them again"]];
+  var step = 0;
+
+  function sectionOf(c) { var m = /^\^\/([a-z0-9-]+)\(\/\|\$\)$/i.exec(c.op === "regex" ? String(c.v) : ""); return m ? m[1].toLowerCase() : ""; }
   function describe(c) {
-    if (c.op === "home") return "Homepage";
-    if (c.op === "regex") { var m = /^\^\/([a-z0-9-]+)\(\/\|\$\)$/i.exec(c.v); return m ? "/" + m[1] + " section" : "pattern <code>" + esc(c.v) + "</code>"; }
-    var w = { is: "is", starts: "starts with", contains: "contains", ends: "ends with" }[c.op] || "rule";
+    if (c.op === "home") return "Home page";
+    for (var i = 0; i < STANDING_NAMES.length; i++) if (STANDING_NAMES[i][0] === c.op && STANDING_NAMES[i][1] === c.v) return STANDING_NAMES[i][2];
+    var seg = sectionOf(c);
+    if (seg) return esc(SECTION_NAMES[seg] || "/" + seg + " section");
+    if (c.op === "is") return "<code>" + esc(c.v) + "</code>";
+    var w = { starts: "addresses starting with", contains: "addresses containing", ends: "addresses ending in", regex: "pattern" }[c.op] || "rule";
     return w + " <code>" + esc(c.v) + "</code>";
   }
   function reEsc(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
@@ -318,158 +341,224 @@
   function sections() {
     var counts = {};
     SITEMAP.paths.forEach(function (p) { var seg = p.split("/")[1]; if (seg) counts[seg] = (counts[seg] || 0) + 1; });
-    return Object.keys(counts).filter(function (k) { return counts[k] >= 2; }).sort(function (a, b) { return counts[b] - counts[a]; }).map(function (k) { return { seg: k, n: counts[k] }; });
+    return Object.keys(counts).filter(function (k) { return counts[k] >= 2 && !HIDDEN_SECTIONS[k]; }).sort(function (a, b) { return counts[b] - counts[a]; }).map(function (k) { return { seg: k, n: counts[k] }; });
   }
   function matches(s) { return SITEMAP.paths.filter(function (p) { return P.matchPath(s, p); }); }
   function sameCond(a, b) { return a.op === b.op && String(a.v || "") === String(b.v || ""); }
-
-  function renderSets() {
-    var wrap = $("#setsWrap"); wrap.innerHTML = "";
-    var gtm = S.mode === "gtm";
-    var list = gtm ? S.sets.slice(0, 1) : S.sets;
-    var secs = sections();
-    list.forEach(function (s, i) {
-      var box = el("div", { "class": "setbox", "data-set": i });
-      var h = "<h3>" + (gtm ? "Pages (for the GTM trigger)" : "Rule set " + (i + 1)) + "<span class='sp'></span>" + (!gtm && S.sets.length > 1 ? "<button type='button' class='mini' data-act='delset'>Remove</button>" : "") + "</h3>";
-      h += "<div class='sub'>Show on</div><div class='chips' data-list='include'>" + (s.include.length ? s.include.map(function (c, j) { return "<span class='chip'>" + describe(c) + "<button type='button' data-act='rm' data-list='include' data-j='" + j + "' aria-label='Remove'>×</button></span>"; }).join("") : "<span class='empty'>Every page</span>") + "</div>";
-      h += "<div class='sub'>Never on</div><div class='chips' data-list='exclude'>" + (s.exclude.length ? s.exclude.map(function (c, j) { return "<span class='chip ex'>" + describe(c) + "<button type='button' data-act='rm' data-list='exclude' data-j='" + j + "' aria-label='Remove'>×</button></span>"; }).join("") : "<span class='empty'>No exclusions</span>") + "</div>";
-      h += "<div class='sub'>Add site sections</div><div class='chips'>" +
-        "<button type='button' class='mini' data-act='sec' data-seg=''>Homepage</button>" +
-        secs.map(function (x) { return "<button type='button' class='mini' data-act='sec' data-seg='" + esc(x.seg) + "'>/" + esc(x.seg) + " <span class='n'>" + x.n + "</span></button>"; }).join("") + "</div>";
-      h += "<span class='hint'>Click to show on a section. Shift-click to exclude it.</span>";
-      h += "<div class='sub'>Find a page</div><input type='text' data-act='search' placeholder='Type part of an address, e.g. itineraries' spellcheck='false'><div class='results' hidden></div>";
-      h += "<div class='sub'>Add a rule by hand</div><div class='row'><select data-f='op' class='fix' style='flex-basis:130px'>" + OPS.map(function (o) { return "<option value='" + o[0] + "'>" + o[1] + "</option>"; }).join("") + "</select><input type='text' data-f='val' placeholder='/visit' spellcheck='false'><button type='button' class='mini fix' data-act='addinc'>Show on</button><button type='button' class='mini fix' data-act='addexc'>Never on</button></div>";
-      h += "<div class='match' data-match></div>";
-      h += "<div class='row' style='margin-top:.4rem'><input type='text' data-act='test' placeholder='Test an address, e.g. /visit/hours' spellcheck='false'><span class='fix' data-testout style='font-size:12.5px;min-width:90px'></span></div>";
-      if (!gtm) {
-        h += "<div class='sub'>Also require <span class='n' style='font-weight:400'>(optional)</span></div><div data-conds></div><button type='button' class='mini' data-act='addcond'>Add a condition</button>";
-        h += "<div class='sub'>Fire</div><div class='row'><select data-f='trig'>" + TRIGGERS.map(function (t) { return "<option value='" + t[0] + "'" + (s.trigger.type === t[0] ? " selected" : "") + ">" + t[1] + "</option>"; }).join("") + "</select>" +
-          "<label class='fix' style='flex-basis:110px;margin:0' data-trignum></label></div>";
-      } else {
-        h += "<span class='hint'>Timing comes from the GTM trigger. The page rules above are turned into the trigger settings in step 6.</span>";
-      }
-      box.innerHTML = h;
-      wrap.appendChild(box);
-      renderConds(box, s); renderTrigNum(box, s); renderMatch(box, s);
-    });
-    if (!gtm) { var add = el("button", { type: "button", "class": "mini", id: "addSet" }); add.textContent = "Add another rule set"; wrap.appendChild(add); wrap.appendChild(el("span", { "class": "hint" }, "The pop-up shows when any one rule set is satisfied.")); }
-  }
-  function renderConds(box, s) {
-    var host = box.querySelector("[data-conds]"); if (!host) return;
-    host.innerHTML = s.conds.map(function (c, j) {
-      return "<div class='row' data-cond='" + j + "' style='margin-bottom:.3rem'>" +
-        "<select data-cf='t' class='fix' style='flex-basis:118px'><option value='query'" + (c.t === "query" ? " selected" : "") + ">URL parameter</option><option value='referrer'" + (c.t === "referrer" ? " selected" : "") + ">Came from</option></select>" +
-        (c.t === "query" ? "<input type='text' data-cf='k' placeholder='utm_source' value='" + esc(c.k) + "' spellcheck='false'>" : "") +
-        "<select data-cf='op' class='fix' style='flex-basis:110px'>" + (c.t === "query" ? [["is", "is"], ["contains", "contains"], ["exists", "is present"]] : [["contains", "contains"], ["empty", "is empty"]]).map(function (o) { return "<option value='" + o[0] + "'" + (c.op === o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") + "</select>" +
-        (c.op === "exists" || c.op === "empty" ? "" : "<input type='text' data-cf='v' value='" + esc(c.v) + "' placeholder='" + (c.t === "query" ? "newsletter" : "facebook.com") + "' spellcheck='false'>") +
-        "<label class='check fix' style='margin:0'><input type='checkbox' data-cf='not'" + (c.not ? " checked" : "") + "> not</label>" +
-        "<button type='button' class='mini fix' data-act='rmcond' data-j='" + j + "' aria-label='Remove condition'>×</button></div>";
-    }).join("");
-  }
-  function renderTrigNum(box, s) {
-    var host = box.querySelector("[data-trignum]"); if (!host) return;
-    if (s.trigger.type === "delay") host.innerHTML = "<span class='lb'>Seconds</span><input type='number' min='0' max='600' data-f='seconds' value='" + (+s.trigger.seconds || 0) + "'>";
-    else if (s.trigger.type === "scroll") host.innerHTML = "<span class='lb'>Percent</span><input type='number' min='1' max='100' data-f='percent' value='" + (+s.trigger.percent || 50) + "'>";
-    else host.innerHTML = "";
-  }
-  function renderMatch(box, s) {
-    var host = box.querySelector("[data-match]"), m = matches(s), total = SITEMAP.paths.length;
-    if (!total) { host.innerHTML = "The sitemap could not be loaded, so matching pages cannot be listed."; return; }
-    host.className = "match" + (m.length ? "" : " zero");
-    host.innerHTML = "<strong>Matches " + m.length.toLocaleString() + " of " + total.toLocaleString() + " pages</strong> in the sitemap (" + esc(SITEMAP.fetched) + ")." +
-      (m.length ? "<details><summary>See the pages</summary><ul>" + m.slice(0, 400).map(function (p) { return "<li>" + esc(p) + "</li>"; }).join("") + (m.length > 400 ? "<li>… and " + (m.length - 400) + " more</li>" : "") + "</ul></details>" : " Nothing on the site would show this pop-up.");
-  }
   function addCond(s, list, cond) {
     if (!s[list].some(function (c) { return sameCond(c, cond); })) s[list].push(cond);
     var other = list === "include" ? "exclude" : "include";
     s[other] = s[other].filter(function (c) { return !sameCond(c, cond); });
   }
-  function bindSets() {
-    var wrap = $("#setsWrap");
-    wrap.addEventListener("click", function (e) {
-      var t = e.target.closest("[data-act],#addSet"); if (!t) return;
-      if (t.id === "addSet") { S.sets.push(newSet()); renderSets(); changed(); return; }
-      var box = t.closest(".setbox"), i = +box.getAttribute("data-set"), s = S.sets[i], act = t.getAttribute("data-act");
+  function chips(s, list) {
+    return s[list].map(function (c, j) { return "<span class='chip" + (list === "exclude" ? " ex" : "") + "'>" + describe(c) + "<button type='button' data-act='rm' data-list='" + list + "' data-j='" + j + "' aria-label='Remove'>×</button></span>"; }).join("");
+  }
+  function matchHTML(s) {
+    var total = SITEMAP.paths.length;
+    if (!total) return "<div class='match'>The list of site pages could not be loaded, so matching pages cannot be shown.</div>";
+    var m = matches(s);
+    return "<div class='match" + (m.length ? "" : " zero") + "' data-match><strong>" + (m.length ? "It will appear on " + m.length.toLocaleString("en-US") + " of the site’s " + total.toLocaleString("en-US") + " pages." : "No page on the site matches, so nobody would see it.") + "</strong>" +
+      (m.length ? "<details><summary>See the pages</summary><ul>" + m.slice(0, 400).map(function (p) { return "<li>" + esc(p) + "</li>"; }).join("") + (m.length > 400 ? "<li>… and " + (m.length - 400) + " more</li>" : "") + "</ul></details>" : "") + "</div>";
+  }
+  function pagePicker(s, i, simple) {
+    var some = simple ? S.whereSome : true, h = "";
+    if (simple) {
+      h += "<label class='opt'><input type='radio' name='where0' value='all'" + (some ? "" : " checked") + "><span>On every page<small>Apart from the skipped pages below.</small></span></label>" +
+        "<label class='opt'><input type='radio' name='where0' value='some'" + (some ? " checked" : "") + "><span>Only on certain pages<small>Pick whole sections of the site, or single pages.</small></span></label>";
+    }
+    if (some) {
+      h += "<div class='subhead'>Sections of the site</div><div class='chips'>" +
+        "<button type='button' class='mini-btn' data-act='sec' data-seg='' aria-pressed='" + s.include.some(function (c) { return c.op === "home"; }) + "'>Home page</button>" +
+        sections().map(function (x) {
+          var on = s.include.some(function (c) { return sectionOf(c) === x.seg; });
+          return "<button type='button' class='mini-btn' data-act='sec' data-seg='" + esc(x.seg) + "' aria-pressed='" + on + "' title='/" + esc(x.seg) + "'>" + esc(SECTION_NAMES[x.seg] || "/" + x.seg) + " <span class='n'>" + x.n + "</span></button>";
+        }).join("") + "</div>" +
+        "<div class='subhead'>Showing on</div><div class='chips'>" + (s.include.length ? chips(s, "include") : "<span class='empty'>" + (simple ? "Nothing chosen yet. Pick a section above, or find a page below." : "Every page") + "</span>") + "</div>";
+    }
+    h += "<div class='subhead'>Find a specific page</div><input type='text' data-act='search' placeholder='Type part of its address, for example: hours' spellcheck='false'><div class='results' hidden></div>" +
+      "<div class='subhead'>Skipped pages</div><span class='hint'>Skipped automatically, so a pop-up never gets in the way of buying tickets or sending an RSVP. Remove any you do want it on.</span>" +
+      "<div class='chips'>" + (s.exclude.length ? chips(s, "exclude") : "<span class='empty'>No pages are skipped.</span>") + "</div>" + matchHTML(s);
+    return "<div class='setui' data-set='" + i + "'>" + h + "</div>";
+  }
+  function condsHTML(s, i) {
+    return "<div class='setui' data-set='" + i + "'>" + s.conds.map(function (c, j) {
+      return "<div class='row' data-cond='" + j + "' style='margin-top:.4rem'>" +
+        "<select data-cf='t' class='fix' style='flex-basis:150px'><option value='query'" + (c.t === "query" ? " selected" : "") + ">The link they followed has</option><option value='referrer'" + (c.t === "referrer" ? " selected" : "") + ">They came from</option></select>" +
+        (c.t === "query" ? "<input type='text' data-cf='k' placeholder='utm_source' value='" + esc(c.k) + "' spellcheck='false' aria-label='Tag in the link'>" : "") +
+        "<select data-cf='op' class='fix' style='flex-basis:112px'>" + (c.t === "query" ? [["is", "equal to"], ["contains", "containing"], ["exists", "(any value)"]] : [["contains", "a site containing"], ["empty", "nowhere (typed it in)"]]).map(function (o) { return "<option value='" + o[0] + "'" + (c.op === o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") + "</select>" +
+        (c.op === "exists" || c.op === "empty" ? "" : "<input type='text' data-cf='v' value='" + esc(c.v) + "' placeholder='" + (c.t === "query" ? "newsletter" : "facebook.com") + "' spellcheck='false' aria-label='Value'>") +
+        "<label class='check fix' style='margin:0'><input type='checkbox' data-cf='not'" + (c.not ? " checked" : "") + "> not</label>" +
+        "<button type='button' class='mini-btn fix' data-act='rmcond' data-j='" + j + "' aria-label='Remove'>×</button></div>";
+    }).join("") + "<button type='button' class='mini-btn' data-act='addcond' style='margin-top:.5rem'>Add a condition</button></div>";
+  }
+  function whenHTML(s) {
+    var t = s.trigger, pct = +t.percent || 50, names = { 25: "a quarter of the way", 50: "halfway", 75: "three quarters of the way" };
+    function opt(v, inner, small) { return "<label class='opt'><input type='radio' name='when0' value='" + v + "'" + (t.type === v ? " checked" : "") + "><span>" + inner + (small ? "<small>" + small + "</small>" : "") + "</span></label>"; }
+    var pctOpts = [25, 50, 75]; if (pctOpts.indexOf(pct) < 0) pctOpts.push(pct);
+    return opt("load", "Right away", "As soon as the page opens.") +
+      opt("delay", "After <input type='number' min='1' max='600' data-f='seconds' value='" + (+t.seconds || 5) + "' aria-label='Seconds'> seconds on the page") +
+      opt("scroll", "After scrolling <select data-f='percent' aria-label='How far'>" + pctOpts.map(function (p) { return "<option value='" + p + "'" + (p === pct ? " selected" : "") + ">" + (names[p] || p + "% of the way") + "</option>"; }).join("") + "</select> down the page") +
+      opt("exit", "When someone is about to leave", "On a computer, when the pointer heads for the top of the window. On a phone, on a quick scroll back up.") +
+      opt("none", "Only when a link opens it", "Nothing automatic. Any link on the site can open it." + (S.id ? " Link to: <code>#popup:" + esc(S.id) + "</code>" : ""));
+  }
+  function renderWhere() {
+    var s0 = S.sets[0];
+    $("#where0").innerHTML = pagePicker(s0, 0, true);
+    $("#when0").innerHTML = "<div class='setui' data-set='0'>" + whenHTML(s0) + "</div>";
+    $("#whenBlock").hidden = S.mode === "gtm";
+    $("#tester").innerHTML = "<div class='setui row' data-set='0'><input type='text' data-act='test' placeholder='Paste or type an address, for example /visit/hours' spellcheck='false'><span class='fix' data-testout style='min-width:120px;font-size:13.5px'></span></div>";
+    $("#handRule").innerHTML = "<div class='setui row' data-set='0'><select data-f='op' class='fix' style='flex-basis:190px'>" + OPS.map(function (o) { return "<option value='" + o[0] + "'>" + o[1] + "</option>"; }).join("") + "</select><input type='text' data-f='val' placeholder='/visit' spellcheck='false' aria-label='Address or part of one'><button type='button' class='mini-btn fix' data-act='addinc'>Show here</button><button type='button' class='mini-btn fix' data-act='addexc'>Skip</button></div>";
+    $("#conds0").innerHTML = condsHTML(s0, 0);
+    var extra = "";
+    if (S.mode !== "gtm") {
+      S.sets.slice(1).forEach(function (s, k) {
+        var i = k + 1;
+        extra += "<div class='setbox'><div class='row' style='margin-top:.5rem'><strong>Rule set " + (i + 1) + "</strong><span class='setui fix' data-set='" + i + "'><button type='button' class='mini-btn' data-act='delset'>Remove</button></span></div>" + pagePicker(s, i, false) +
+          "<div class='setui' data-set='" + i + "'><div class='subhead'>When</div><div class='row'><select data-f='trig'>" + TRIGGERS.map(function (t) { return "<option value='" + t[0] + "'" + (s.trigger.type === t[0] ? " selected" : "") + ">" + t[1] + "</option>"; }).join("") + "</select>" +
+          (s.trigger.type === "delay" ? "<input type='number' class='fix' style='flex-basis:90px' min='0' max='600' data-f='seconds' value='" + (+s.trigger.seconds || 0) + "' aria-label='Seconds'>" : s.trigger.type === "scroll" ? "<input type='number' class='fix' style='flex-basis:90px' min='1' max='100' data-f='percent' value='" + (+s.trigger.percent || 50) + "' aria-label='Percent'>" : "") + "</div></div></div>";
+      });
+      extra += "<div class='setui' data-set='0'><button type='button' class='mini-btn' data-act='addset' style='margin-top:.5rem'>Add a set of rules</button></div>";
+    } else extra = "<span class='hint'>Not used when Google Tag Manager decides the timing.</span>";
+    $("#moreSets").innerHTML = extra;
+  }
+  function bindWhere() {
+    var form = $("#form");
+    form.addEventListener("click", function (e) {
+      var t = e.target.closest("[data-act]"); if (!t) return;
+      var ui = t.closest(".setui"); if (!ui) return;
+      var i = +ui.getAttribute("data-set"), s = S.sets[i], act = t.getAttribute("data-act");
       if (act === "delset") { S.sets.splice(i, 1); }
+      else if (act === "addset") { S.sets.push(newSet()); }
       else if (act === "rm") { s[t.getAttribute("data-list")].splice(+t.getAttribute("data-j"), 1); }
-      else if (act === "sec") { var seg = t.getAttribute("data-seg"); addCond(s, e.shiftKey ? "exclude" : "include", seg ? { t: "path", op: "regex", v: "^/" + seg + "(/|$)" } : { t: "path", op: "home", v: "" }); }
-      else if (act === "addinc" || act === "addexc") {
-        var v = box.querySelector("[data-f=val]").value.trim(), op = box.querySelector("[data-f=op]").value;
-        if (!v) { toast("Type an address or part of one first."); return; }
-        if (op === "regex") { try { new RegExp(v); } catch (err) { toast("That pattern is not valid."); return; } if (/\(\?[=!<]|\\[1-9]/.test(v)) { toast("GTM cannot use look-arounds or back-references. Simplify the pattern."); return; } if (/\([^)]*[+*][^)]*\)\s*[+*{]/.test(v)) { toast("That pattern repeats a repeat, which can freeze a browser. Simplify it."); return; } }
-        else if (v.charAt(0) !== "/" && op !== "contains" && op !== "ends") v = "/" + v;
-        addCond(s, act === "addinc" ? "include" : "exclude", { t: "path", op: op, v: v });
+      else if (act === "sec") {
+        var seg = t.getAttribute("data-seg"), cond = seg ? { t: "path", op: "regex", v: "^/" + seg + "(/|$)" } : { t: "path", op: "home", v: "" };
+        var has = s.include.some(function (c) { return sameCond(c, cond); });
+        if (has) s.include = s.include.filter(function (c) { return !sameCond(c, cond); }); else addCond(s, "include", cond);
       }
-      else if (act === "pick" || act === "pickex") { addCond(s, act === "pick" ? "include" : "exclude", { t: "path", op: "is", v: t.getAttribute("data-p") }); }
+      else if (act === "addinc" || act === "addexc") {
+        var v = ui.querySelector("[data-f=val]").value.trim(), op = ui.querySelector("[data-f=op]").value;
+        if (!v) { toast("Type an address, or part of one, first."); return; }
+        if (op === "regex") {
+          try { new RegExp(v); } catch (err) { toast("That pattern is not valid."); return; }
+          if (/\(\?[=!<]|\\[1-9]/.test(v)) { toast("Google Tag Manager cannot use that kind of pattern. Simplify it."); return; }
+          if (/\([^)]*[+*][^)]*\)\s*[+*{]/.test(v)) { toast("That pattern repeats a repeat, which can freeze a browser. Simplify it."); return; }
+        } else if (v.charAt(0) !== "/" && op !== "contains" && op !== "ends") v = "/" + v;
+        addCond(s, act === "addinc" ? "include" : "exclude", { t: "path", op: op, v: v });
+        if (act === "addinc" && i === 0) S.whereSome = true;
+      }
+      else if (act === "pick" || act === "pickex") {
+        addCond(s, act === "pick" ? "include" : "exclude", { t: "path", op: "is", v: t.getAttribute("data-p") });
+        if (act === "pick" && i === 0) S.whereSome = true;
+      }
       else if (act === "addcond") { s.conds.push({ t: "query", k: "", op: "is", v: "", not: false }); }
       else if (act === "rmcond") { s.conds.splice(+t.getAttribute("data-j"), 1); }
       else return;
-      renderSets(); changed();
+      renderWhere(); changed();
     });
-    wrap.addEventListener("input", function (e) {
-      var t = e.target, box = t.closest(".setbox"); if (!box) return;
-      var s = S.sets[+box.getAttribute("data-set")], act = t.getAttribute("data-act");
+    form.addEventListener("input", function (e) {
+      var t = e.target, ui = t.closest(".setui"); if (!ui) return;
+      var i = +ui.getAttribute("data-set"), s = S.sets[i], act = t.getAttribute("data-act");
       if (act === "search") {
-        var qv = t.value.trim().toLowerCase(), res = box.querySelector(".results");
+        var qv = t.value.trim().toLowerCase(), res = ui.querySelector(".results");
         if (qv.length < 2) { res.hidden = true; return; }
         var hits = SITEMAP.paths.filter(function (p) { return p.toLowerCase().indexOf(qv) > -1; }).slice(0, 40);
         res.hidden = false;
-        res.innerHTML = hits.length ? hits.map(function (p) { return "<div><span class='mono' title='" + esc(p) + "'>" + esc(p) + "</span><button type='button' class='mini' data-act='pick' data-p='" + esc(p) + "'>Show on</button><button type='button' class='mini' data-act='pickex' data-p='" + esc(p) + "'>Never on</button></div>"; }).join("") : "<div><span class='empty'>No page in the sitemap contains that.</span></div>";
+        res.innerHTML = hits.length ? hits.map(function (p) {
+          return "<div><span class='mono' title='" + esc(p) + "'>" + esc(p) + "</span><button type='button' class='mini-btn' data-act='pick' data-p='" + esc(p) + "'>Show here</button><button type='button' class='mini-btn' data-act='pickex' data-p='" + esc(p) + "'>Skip</button></div>";
+        }).join("") : "<div><span class='empty'>No page on the site has that in its address.</span></div>";
         return;
       }
       if (act === "test") {
-        var out = box.querySelector("[data-testout]"), v = t.value.trim();
+        var out = ui.querySelector("[data-testout]"), v = t.value.trim();
         if (!v) { out.textContent = ""; return; }
         try { if (/^https?:\/\//i.test(v)) v = new URL(v).pathname; } catch (err) {}
         if (v.charAt(0) !== "/") v = "/" + v;
         var ok = P.matchPath(s, v.split("?")[0].split("#")[0]);
-        out.innerHTML = ok ? "<b style='color:#1B4532'>Would show</b>" : "<b style='color:#a8321e'>Would not show</b>";
+        out.innerHTML = ok ? "<b style='color:#1B4532'>It would show</b>" : "<b style='color:#A8321E'>It would not show</b>";
         return;
       }
       var f = t.getAttribute("data-f");
-      if (f === "seconds" || f === "percent") { s.trigger[f] = +t.value; changed(); return; }
+      if (f === "seconds") { s.trigger.seconds = +t.value; if (i === 0) { s.trigger.type = "delay"; var r = $("#when0 input[value=delay]"); if (r) r.checked = true; } changed(); return; }
+      if (f === "percent" && t.tagName === "INPUT") { s.trigger.percent = +t.value; changed(); return; }
       var cf = t.getAttribute("data-cf");
-      if (cf && (cf === "k" || cf === "v")) { s.conds[+t.closest("[data-cond]").getAttribute("data-cond")][cf] = t.value; changed(); }
+      if (cf === "k" || cf === "v") { s.conds[+t.closest("[data-cond]").getAttribute("data-cond")][cf] = t.value; changed(); }
     });
-    wrap.addEventListener("change", function (e) {
-      var t = e.target, box = t.closest(".setbox"); if (!box) return;
-      var s = S.sets[+box.getAttribute("data-set")];
-      if (t.getAttribute("data-f") === "trig") { s.trigger.type = t.value; renderTrigNum(box, s); changed(); return; }
+    form.addEventListener("change", function (e) {
+      var t = e.target;
+      if (t.name === "where0") {
+        S.whereSome = t.value === "some";
+        if (!S.whereSome && S.sets[0].include.length) { S.sets[0].include = []; toast("Now showing on every page."); }
+        renderWhere(); changed(); return;
+      }
+      var ui = t.closest(".setui"); if (!ui) return;
+      var i = +ui.getAttribute("data-set"), s = S.sets[i];
+      if (t.name === "when0") { s.trigger.type = t.value; changed(); return; }
+      var f = t.getAttribute("data-f");
+      if (f === "trig") { s.trigger.type = t.value; renderWhere(); changed(); return; }
+      if (f === "percent" && t.tagName === "SELECT") { s.trigger.percent = +t.value; s.trigger.type = "scroll"; var r = $("#when0 input[value=scroll]"); if (r) r.checked = true; changed(); return; }
       var cf = t.getAttribute("data-cf");
       if (cf === "t" || cf === "op" || cf === "not") {
         var c = s.conds[+t.closest("[data-cond]").getAttribute("data-cond")];
         if (cf === "not") c.not = t.checked; else c[cf] = t.value;
         if (cf === "t") { c.op = c.t === "query" ? "is" : "contains"; c.k = ""; c.v = ""; }
-        renderConds(box, s); changed();
+        renderWhere(); changed();
       }
     });
   }
 
   /* ------------------------------------------------------------------ */
-  /* Static controls                                                     */
+  /* The other controls                                                  */
   /* ------------------------------------------------------------------ */
+  function freqValue(o) { return o.mode === "days" ? "days:" + (+o.days || 30) : o.mode; }
+  function freqOptions(list, o) {
+    var cur = freqValue(o), opts = list.slice();
+    if (!opts.some(function (x) { return x[0] === cur; }) && o.mode === "days") opts.splice(0, 0, [cur, "Wait " + (+o.days) + " days"]);
+    else if (!opts.some(function (x) { return x[0] === cur; })) opts = FREQ_CLOSE.filter(function (x) { return x[0] === cur; }).concat(opts);
+    return opts.map(function (x) { return "<option value='" + x[0] + "'" + (x[0] === cur ? " selected" : "") + ">" + x[1] + "</option>"; }).join("");
+  }
   function renderCards() {
-    $("#formats").innerHTML = FORMATS.map(function (f) { return "<button type='button' class='card' data-fmt='" + f.key + "' aria-pressed='" + (formatKey() === f.key) + "'>" + f.label + "<small>" + f.note + "</small></button>"; }).join("");
-    $("#modes").innerHTML = [["auto", "The pop-up's own rules", "One GTM tag on All Pages. Set the rules here."], ["gtm", "A GTM trigger", "For form submits, clicks and other GTM events."]].map(function (m) { return "<button type='button' class='card' data-mode='" + m[0] + "' aria-pressed='" + (S.mode === m[0]) + "'>" + m[1] + "<small>" + m[2] + "</small></button>"; }).join("");
-    $("#presets").innerHTML = PRESETS.map(function (p, i) { return "<button type='button' class='card preset' data-preset='" + i + "' aria-pressed='" + (S.presetName === p.name) + "'><span class='strip'><i style='background:" + p.bg + "'></i><i style='background:" + p.head + "'></i><i style='background:" + p.btnBg + "'></i></span><span class='nm'>" + esc(p.name) + "</span></button>"; }).join("");
-    $("#colors").innerHTML = COLOR_ROLES.map(function (r) {
-      return "<span class='lb' style='margin-top:.6rem'>" + r[1] + "</span><div class='swatches' data-role='" + r[0] + "'>" + PALETTE.map(function (c) { return "<button type='button' title='" + c.name + "' aria-label='" + r[1] + ": " + c.name + "' data-hex='" + c.hex + "' style='background:" + c.hex + "' aria-pressed='" + (S.theme[r[0]].toLowerCase() === c.hex.toLowerCase()) + "'></button>"; }).join("") + "</div>";
+    $("#formats").innerHTML = FORMATS.map(function (f) {
+      return "<button type='button' class='card' data-fmt='" + f.key + "' aria-pressed='" + (formatKey() === f.key) + "'><span class='mini m-" + f.key + "' aria-hidden='true'><span class='pg'>" + (f.key === "popup" ? "<span class='dim'></span>" : "") + "<span class='el'></span></span></span><span class='t'>" + f.label + "<small>" + f.note + "</small></span></button>";
     }).join("");
-    $("#devices").innerHTML = ["desktop", "tablet", "phone"].map(function (d) { return "<label class='check'><input type='checkbox' data-dev-rule='" + d + "'" + (S.devices[d] ? " checked" : "") + "> " + d.charAt(0).toUpperCase() + d.slice(1) + "</label>"; }).join("");
-    $("#days").innerHTML = DAYS.map(function (d, i) { return "<label class='check'><input type='checkbox' data-day='" + i + "'" + (S.days.indexOf(i) > -1 ? " checked" : "") + "> " + d + "</label>"; }).join("");
-    var c = [["Body text", ratio(S.theme.text, S.theme.bg), 4.5], ["Headline", ratio(S.theme.head, S.theme.bg), 3], ["Button", ratio(S.theme.btnText, S.theme.btnBg), 4.5]];
-    $("#contrast").innerHTML = "Contrast: " + c.map(function (x) { return x[0] + " <b class='" + (x[1] >= x[2] ? "ok" : "no") + "'>" + x[1].toFixed(1) + ":1 " + (x[1] >= x[2] ? "passes" : "fails") + "</b>"; }).join(" · ");
+    $("#presets").innerHTML = PRESETS.map(function (p, i) {
+      return "<button type='button' class='card preset' data-preset='" + i + "' aria-pressed='" + (S.presetName === p.name) + "'><span class='sample' style='background:" + p.bg + ";color:" + p.text + "'><b style='color:" + p.head + "'>Headline</b><u style='background:" + p.btnBg + ";color:" + p.btnText + "'>Button</u></span><span class='t'>" + esc(p.name) + "</span></button>";
+    }).join("");
+    $("#colors").innerHTML = COLOR_ROLES.map(function (r) {
+      return "<span class='lb' style='margin-top:.7rem'>" + r[1] + "</span><div class='swatches' data-role='" + r[0] + "'>" + PALETTE.map(function (c) { return "<button type='button' title='" + c.name + "' aria-label='" + r[1] + ": " + c.name + "' data-hex='" + c.hex + "' style='background:" + c.hex + "' aria-pressed='" + (S.theme[r[0]].toLowerCase() === c.hex.toLowerCase()) + "'></button>"; }).join("") + "</div>";
+    }).join("");
+    $("#devices").innerHTML = [["desktop", "Computers"], ["tablet", "Tablets"], ["phone", "Phones"]].map(function (d) { return "<label class='check' style='margin-top:0'><input type='checkbox' data-dev-rule='" + d[0] + "'" + (S.devices[d[0]] ? " checked" : "") + "> " + d[1] + "</label>"; }).join("");
+    $("#days").innerHTML = DAYS.map(function (d, i) { return "<label class='check' style='margin-top:.2rem'><input type='checkbox' data-day='" + i + "'" + (S.days.indexOf(i) > -1 ? " checked" : "") + "> " + d + "</label>"; }).join("");
+    var hard = [];
+    if (ratio(S.theme.text, S.theme.bg) < 4.5) hard.push("the text");
+    if (ratio(S.theme.head, S.theme.bg) < 3) hard.push("the headline");
+    if (ratio(S.theme.btnText, S.theme.btnBg) < 4.5) hard.push("the button");
+    var v = $("#contrast");
+    v.className = "verdict" + (hard.length ? " no" : "");
+    v.textContent = hard.length ? "Hard to read: " + hard.join(", ") + ". Try another combination." : "✓ Easy to read. These colors have enough contrast.";
+    $("#freqClose").innerHTML = freqOptions(FREQ_CLOSE, S.freq.close);
+    $("#freqConv").innerHTML = freqOptions(FREQ_CONV, S.freq.convert);
+  }
+  function buttonEditor(i) {
+    var b = S.content.buttons[i], a = ACTIONS.filter(function (x) { return x[0] === b.action; })[0] || ACTIONS[0];
+    var common = ACTIONS.filter(function (x) { return x[4]; }), rare = ACTIONS.filter(function (x) { return !x[4]; });
+    function o(x) { return "<option value='" + x[0] + "'" + (x[0] === b.action ? " selected" : "") + ">" + x[1] + "</option>"; }
+    return "<div class='btnbox'><div class='row'><label><span class='lb'>" + (i ? "Second button text" : "Button text") + "</span><input type='text' data-b='" + i + "' data-bf='label' maxlength='40' value='" + esc(b.label) + "' placeholder='" + (i ? "Not now" : "Reserve tickets") + "'></label>" +
+      "<label><span class='lb'>What it does</span><select data-b='" + i + "' data-bf='action'>" + common.map(o).join("") + "<optgroup label='Less common'>" + rare.map(o).join("") + "</optgroup></select></label></div>" +
+      (b.action === "close" ? "" : "<label><span class='lb'>" + a[3] + "</span><input type='text' data-b='" + i + "' data-bf='value' value='" + esc(b.value) + "' placeholder='" + esc(a[2]) + "' spellcheck='false'></label>") +
+      (b.action === "url" ? "<label class='check'><input type='checkbox' data-b='" + i + "' data-bf='newTab'" + (b.newTab ? " checked" : "") + "> Open it in a new tab</label>" : "") +
+      (i ? "<button type='button' class='linkish' id='rmBtn2' style='margin-top:.6rem'>Remove the second button</button>" : "") + "</div>";
   }
   function renderButtons() {
-    [0, 1].forEach(function (i) {
-      var b = S.content.buttons[i], a = ACTIONS.filter(function (x) { return x[0] === b.action; })[0] || ACTIONS[0];
-      $("#btn" + i).innerHTML =
-        "<div class='row'><label><span class='lb'>Text</span><input type='text' data-b='" + i + "' data-bf='label' maxlength='40' value='" + esc(b.label) + "' placeholder='" + (i ? "Not now" : "Reserve tickets") + "'></label>" +
-        "<label><span class='lb'>When clicked</span><select data-b='" + i + "' data-bf='action'>" + ACTIONS.map(function (x) { return "<option value='" + x[0] + "'" + (x[0] === b.action ? " selected" : "") + ">" + x[1] + "</option>"; }).join("") + "</select></label></div>" +
-        (b.action === "close" ? "" : "<label><input type='text' data-b='" + i + "' data-bf='value' value='" + esc(b.value) + "' placeholder='" + esc(a[2]) + "' spellcheck='false' aria-label='Button " + (i + 1) + " target'></label>") +
-        "<div class='row'>" + (b.action === "url" ? "<label class='check'><input type='checkbox' data-b='" + i + "' data-bf='newTab'" + (b.newTab ? " checked" : "") + "> Open in a new tab</label>" : "") +
-        (b.action === "close" ? "" : "<label class='check'><input type='checkbox' data-b='" + i + "' data-bf='convert'" + (b.convert ? " checked" : "") + "> Counts as a click-through</label>") + "</div>";
-    });
+    $("#btn0").innerHTML = buttonEditor(0);
+    $("#btn1wrap").innerHTML = S.btn2 ? buttonEditor(1) : "<button type='button' class='linkish' id='addBtn2' style='margin-top:.7rem'>+ Add a second button</button>";
+    renderConvOpts();
+  }
+  function renderConvOpts() {
+    var rows = [0, 1].filter(function (i) { return (i === 0 || S.btn2) && S.content.buttons[i].action !== "close"; }).map(function (i) {
+      var b = S.content.buttons[i];
+      return "<label class='check'><input type='checkbox' data-b='" + i + "' data-bf='convert'" + (b.convert ? " checked" : "") + "> Count a click on " + (b.label ? "“" + esc(b.label) + "”" : "button " + (i + 1)) + " as a success</label>";
+    }).join("");
+    $("#convOpts").innerHTML = rows ? "<h4>Measuring success</h4><span class='hint'>A success is reported to Google Analytics, and stops the pop-up showing to that person for a while.</span>" + rows : "";
   }
   function syncStatic() {
     $$("[data-k]").forEach(function (inp) {
@@ -477,46 +566,65 @@
       if (inp.type === "checkbox") inp.checked = !!v; else if (document.activeElement !== inp) inp.value = v == null ? "" : v;
     });
     var fmt = S.format;
-    $("#optPopup").hidden = fmt !== "popup"; $("#optSlide").hidden = fmt !== "slidein";
-    $("#imageBlock").hidden = fmt === "banner"; $("#formBlock").hidden = fmt === "banner";
-    var opts = fmt === "popup" ? [["top", "On top"], ["left", "Left side"], ["right", "Right side"]] : fmt === "takeover" ? [["bg", "Background"], ["top", "Above the text"]] : [["top", "On top"]];
+    $("#optPopup").hidden = fmt !== "popup"; $("#optSlide").hidden = fmt !== "slidein"; $("#optBackdrop").hidden = fmt !== "popup";
+    $("#imageBlock").hidden = fmt === "banner"; $("#formBlock").hidden = fmt === "banner"; $("#optHideImg").hidden = fmt === "banner";
+    var opts = fmt === "popup" ? [["top", "On top"], ["left", "On the left"], ["right", "On the right"]] : fmt === "takeover" ? [["bg", "Behind the text"], ["top", "Above the text"]] : [["top", "On top"]];
     if (!opts.some(function (o) { return o[0] === S.content.image.pos; })) S.content.image.pos = opts[0][0];
     $("#imgPos").innerHTML = opts.map(function (o) { return "<option value='" + o[0] + "'" + (o[0] === S.content.image.pos ? " selected" : "") + ">" + o[1] + "</option>"; }).join("");
-    $("#closeDays").hidden = S.freq.close.mode !== "days"; $("#convDays").hidden = S.freq.convert.mode !== "days";
+    $("#gtmMode").checked = S.mode === "gtm";
     var body = $("#body"); if (document.activeElement !== body && body.innerHTML !== S.content.body) body.innerHTML = S.content.body;
   }
-  function renderAll() { syncStatic(); renderCards(); renderButtons(); renderSets(); changed(true); }
+  /* Open "More options" where a loaded pop-up already uses something inside it. */
+  function openUsedOptions() {
+    var c = S.content;
+    $("#more1").open = !!(c.eyebrow || c.form.formId || S.hideImagePhone);
+    $("#more2").open = !S.presetName;
+    $("#more3").open = !!(S.days.length || S.from || S.to || S.sets.length > 1 || S.sets[0].conds.length || S.mode === "gtm" || S.sets.some(function (s) { return s.include.concat(s.exclude).some(function (x) { return x.op === "regex" && !sectionOf(x); }); }));
+  }
+  function renderSteps() {
+    var todo = {}; checks(toConfig()).forEach(function (x) { if (x[0] === "stop") todo[x[2]] = true; });
+    $("#stepper").innerHTML = STEPS.map(function (s, i) { return "<button type='button' data-go='" + i + "'" + (i === step ? " aria-current='step'" : "") + (todo[i] && i !== step ? " class='todo' title='Something here needs attention'" : "") + "><i>" + (i + 1) + "</i>" + s + "</button>"; }).join("");
+    $$(".step").forEach(function (el) { el.hidden = +el.getAttribute("data-step") !== step; });
+    $("#prev").hidden = step === 0;
+    var nx = $("#next"); nx.hidden = step === STEPS.length - 1; if (!nx.hidden) nx.textContent = "Next: " + STEPS[step + 1];
+  }
+  function goStep(n) {
+    step = Math.max(0, Math.min(STEPS.length - 1, n));
+    renderSteps();
+    $("#form").scrollTop = 0;
+  }
+  function renderAll() { syncStatic(); renderCards(); renderButtons(); renderWhere(); openUsedOptions(); changed(true); }
 
   /* ------------------------------------------------------------------ */
   /* Checks and hand-off                                                 */
   /* ------------------------------------------------------------------ */
   function checks(c) {
     var out = [], ct = c.content || {}, text = [ct.eyebrow, ct.headline, (ct.body || "").replace(/<[^>]*>/g, " ")].concat((ct.buttons || []).map(function (b) { return b.label; })).join(" ");
-    if (!/^[a-z0-9][a-z0-9-]{1,39}$/.test(c.id || "")) out.push(["stop", "Give the pop-up a name so it gets an id (lowercase letters, numbers and hyphens)."]);
-    if (!ct.headline && !ct.body) out.push(["stop", "Add a headline or body text."]);
+    function add(level, msg, st) { out.push([level, msg, st]); }
+    if (!/^[a-z0-9][a-z0-9-]{1,39}$/.test(c.id || "")) add("stop", S.name.trim() ? "The reference name can only use lowercase letters, numbers and hyphens." : "Give the pop-up a name.", 0);
+    if (!ct.headline && !ct.body) add("stop", "Add a headline or some text.", 1);
     (ct.buttons || []).forEach(function (b, i) {
-      if (b.action === "url" && !okUrl(b.value, true)) out.push(["stop", "Button " + (i + 1) + " needs a full https:// address (or one starting with /)."]);
-      if ((b.action === "popup" || b.action === "tel" || b.action === "mailto" || b.action === "copy" || b.action === "event") && !b.value) out.push(["stop", "Button " + (i + 1) + " needs a value for its action."]);
+      if (b.action === "url" && !okUrl(b.value, true)) add("stop", "The button “" + b.label + "” needs a full web address starting with https://", 1);
+      else if (b.action !== "url" && b.action !== "close" && !b.value) add("stop", "The button “" + b.label + "” needs more information for what it does.", 1);
     });
-    if (ct.image && !okUrl(ct.image.url)) out.push(["stop", "The image address must start with https://."]);
-    if (ct.image && ct.image.pos !== "bg" && !ct.image.alt) out.push(["warn", "Add an image description for screen-reader users, unless the image is purely decorative."]);
-    if (ct.form && !/^[A-Za-z0-9-]{8,64}$/.test(ct.form.formId)) out.push(["stop", "The Constant Contact form ID does not look right."]);
-    if (ct.form && !ct.form.fallbackUrl) out.push(["warn", "Add a fallback link for the sign-up form in case the form does not load."]);
-    if (!(ct.buttons || []).length && !ct.form && c.format !== "banner") out.push(["warn", "There is no button. Visitors can only close it."]);
-    if (!S.devices.desktop && !S.devices.tablet && !S.devices.phone) out.push(["stop", "Tick at least one device."]);
-    if ((S.from && !S.to) || (!S.from && S.to)) out.push(["warn", "“Only between” needs both times. With one missing it is ignored."]);
+    if (ct.image && !okUrl(ct.image.url)) add("stop", "The picture’s address must start with https://", 1);
+    if (ct.image && ct.image.pos !== "bg" && !ct.image.alt) add("warn", "Describe the picture for people who cannot see it.", 1);
+    if (ct.form && !/^[A-Za-z0-9-]{8,64}$/.test(ct.form.formId)) add("stop", "The sign-up form ID does not look right.", 1);
+    if (ct.form && !ct.form.fallbackUrl) add("warn", "Add a back-up link for the sign-up form in case the form does not load.", 1);
+    if (!(ct.buttons || []).length && !ct.form && c.format !== "banner") add("warn", "There is no button, so people can only close it.", 1);
+    if (c.format === "banner" && ((ct.headline || "") + (ct.body || "").replace(/<[^>]*>/g, "")).length > 110) add("warn", "That is a lot of words for a banner. It will run to several lines on phones.", 1);
+    TERMS.forEach(function (t) { if (t[0].test(text)) add("warn", t[1], 1); });
+    if (ratio(c.theme.text, c.theme.bg) < 4.5 || ratio(c.theme.head, c.theme.bg) < 3 || ratio(c.theme.btnText, c.theme.btnBg) < 4.5) add("warn", "Some of the wording is hard to read in these colors.", 2);
+    if (S.mode !== "gtm" && S.whereSome && !S.sets[0].include.length) add("stop", "Choose at least one section or page, or switch to “On every page”.", 3);
+    if (!S.devices.desktop && !S.devices.tablet && !S.devices.phone) add("stop", "Choose at least one kind of device.", 3);
+    if ((S.from && !S.to) || (!S.from && S.to)) add("warn", "The hours need both a “from” and an “until”. With one missing they are ignored.", 3);
     var sch = (c.rules || {}).schedule || {};
-    if (!sch.end) out.push(["warn", "No end date. Give it one so it stops by itself."]);
-    else if (Date.parse(sch.end) < Date.now()) out.push(["stop", "The end date is in the past."]);
-    if (sch.start && sch.end && Date.parse(sch.start) >= Date.parse(sch.end)) out.push(["stop", "The start date is after the end date."]);
-    if (ratio(c.theme.text, c.theme.bg) < 4.5) out.push(["warn", "Body text contrast is below 4.5:1."]);
-    if (ratio(c.theme.head, c.theme.bg) < 3) out.push(["warn", "Headline contrast is below 3:1."]);
-    if (ratio(c.theme.btnText, c.theme.btnBg) < 4.5) out.push(["warn", "Button text contrast is below 4.5:1."]);
-    TERMS.forEach(function (t) { if (t[0].test(text)) out.push(["warn", t[1]]); });
+    if (!sch.end) add("warn", "There is no stop date. Add one so it takes itself down.", 3);
+    else if (Date.parse(sch.end) < Date.now()) add("stop", "The stop date has already passed.", 3);
+    if (sch.start && sch.end && Date.parse(sch.start) >= Date.parse(sch.end)) add("stop", "The start date is after the stop date.", 3);
     var phones = !c.rules.devices || c.rules.devices.indexOf("phone") > -1;
-    if ((c.format === "takeover" || c.format === "popup") && phones && c.rules.sets && c.rules.sets.some(function (s) { return (s.trigger || {}).type === "load"; })) out.push(["warn", "This covers the page the moment it loads on phones. Google can demote pages that do that. Add a delay or a scroll trigger, or leave phones out."]);
-    if (c.rules.sets) c.rules.sets.forEach(function (s, i) { if (SITEMAP.paths.length && !matches(s).length && (s.include || []).length) out.push(["warn", "Rule set " + (i + 1) + " matches no page in the sitemap."]); });
-    if (c.format === "banner" && ((ct.headline || "") + (ct.body || "").replace(/<[^>]*>/g, "")).length > 110) out.push(["warn", "Banner copy is long. It will wrap to several lines on phones."]);
+    if ((c.format === "takeover" || c.format === "popup") && phones && c.rules.mode !== "gtm" && c.rules.sets && c.rules.sets.some(function (s) { return (s.trigger || {}).type === "load"; })) add("warn", "On phones this covers the page the moment it opens, and Google can rank pages lower for that. Add a short delay, or leave phones out.", 3);
+    if (c.rules.mode !== "gtm" && c.rules.sets) c.rules.sets.forEach(function (s) { if (SITEMAP.paths.length && !matches(s).length) add("warn", "The page choices match no page on the site.", 3); });
     return out;
   }
   function gtmTrigger(c) {
@@ -524,31 +632,46 @@
     var rows = [["Trigger name", "TRPL Popup – Trigger – " + c.id], ["Trigger type", "Page View (or the event you want: Form Submission, Click, Custom Event…)"], ["This trigger fires on", inc.length || exc.length ? "Some Page Views" : "All Page Views"]];
     if (inc.length) rows.push(["Condition", "Page Path · matches RegEx (ignore case) · <code class='mono'>" + esc(inc.join("|")) + "</code>"]);
     if (exc.length) rows.push(["Condition", "Page Path · does not match RegEx (ignore case) · <code class='mono'>" + esc(exc.join("|")) + "</code>"]);
-    return "<div class='sub'>Second tag: what fires it</div><span class='hint'>Create one more Custom HTML tag named <b>TRPL Popup – Show – " + esc(c.id) + "</b> with the line below, and attach this trigger to it.</span>" +
-      "<div class='copyline'><code id='showCode'>" + esc(showSnippet(c.id)) + "</code><button type='button' class='mini' data-copy='showCode'>Copy</button></div>" +
+    return "<h3>The trigger in Google Tag Manager</h3><span class='hint'>Because Google Tag Manager decides the timing, make one more Custom HTML tag named <b>TRPL Popup – Show – " + esc(c.id) + "</b>, paste the line below into it, and attach a trigger with these settings.</span>" +
+      "<div class='copyline'><code id='showCode'>" + esc(showSnippet(c.id)) + "</code><button type='button' class='mini-btn' data-copy='showCode'>Copy</button></div>" +
       "<table class='kv'>" + rows.map(function (r) { return "<tr><th>" + r[0] + "</th><td>" + r[1] + "</td></tr>"; }).join("") + "</table>";
+  }
+  function stepsList(tag, ver) {
+    return S.isEdit ? [
+      "Open Google Tag Manager and go to Tags.",
+      "Open the tag named " + tag + ".",
+      "Click into the HTML box, select everything in it, and paste the code.",
+      "Save, then Preview to check the pop-up on the site.",
+      "Submit, using the version name " + ver + "."
+    ] : [
+      "Open Google Tag Manager and go to Tags.",
+      "Open the tag named TRPL Popup – TEMPLATE (copy me). Click the ⋮ menu at the top right and choose Copy.",
+      "Rename the copy to " + tag + ".",
+      "Click into the HTML box, select everything in it, and paste the code.",
+      "Save, then Preview to check the pop-up on the site.",
+      "Submit, using the version name " + ver + "."
+    ];
   }
   function handoff(c) {
     var list = checks(c), stops = list.filter(function (x) { return x[0] === "stop"; });
-    $("#checks").innerHTML = list.length ? list.map(function (x) { return "<li class='" + (x[0] === "stop" ? "stop" : "") + "'>" + esc(x[1]) + "</li>"; }).join("") : "<li class='fine'>Ready to copy.</li>";
-    var fi = formatInfo(), tag = "TRPL Popup – " + (c.id || "…") + " (" + fi.tag + ")";
+    $("#checks").innerHTML = list.length ? list.map(function (x) {
+      return "<li class='" + (x[0] === "stop" ? "stop" : "") + "'>" + esc(x[1]) + "<button type='button' class='linkish' data-go='" + x[2] + "'>" + (x[0] === "stop" ? "Fix this" : "Take a look") + "</button></li>";
+    }).join("") : "<li class='fine'>Everything looks good. It is ready to copy.</li>";
+    var fi = formatInfo(), tag = "TRPL Popup – " + (c.id || "…") + " (" + fi.tag + ")", ver = "Popup: " + (S.isEdit ? "edit " : "add ") + (c.id || "…");
     $("#tagName").textContent = tag;
-    $("#verName").textContent = "Popup: " + (S.isEdit ? "edit " : "add ") + (c.id || "…");
-    $("#steps").innerHTML = (S.isEdit ? [
-      "Click <b>Copy for GTM</b> above.",
-      "In GTM, open the tag <b>" + esc(tag) + "</b>.",
-      "Select everything in the HTML box and paste over it. <b>Save</b>.",
-      "<b>Preview</b>, check the pop-up on the site, then <b>Submit</b> with the version name above."
-    ] : [
-      "Click <b>Copy for GTM</b> above.",
-      "In GTM: <b>Tags</b> → open <b>TRPL Popup – TEMPLATE (copy me)</b> → <b>⋮</b> → <b>Copy</b>.",
-      "Rename the copy to the tag name above. Select everything in the HTML box and paste. <b>Save</b>.",
-      "<b>Preview</b>, check the pop-up on the site, then <b>Submit</b> with the version name above."
-    ]).map(function (s) { return "<li>" + s + "</li>"; }).join("") +
-      "<li>To take it down later: on the tag, <b>⋮</b> → <b>Pause</b>, then Submit.</li>";
+    $("#verName").textContent = ver;
+    $("#steps").innerHTML = stepsList("<b>" + esc(tag) + "</b>", "<b>" + esc(ver) + "</b>").map(function (s) { return "<li>" + s.replace("TRPL Popup – TEMPLATE (copy me)", "<b>TRPL Popup – TEMPLATE (copy me)</b>") + "</li>"; }).join("") +
+      "<li>To take it down later: open the tag, click ⋮, choose Pause, then Submit.</li>";
     $("#gtmFired").innerHTML = S.mode === "gtm" && /^[a-z0-9][a-z0-9-]{1,39}$/.test(c.id) ? gtmTrigger(c) : "";
-    $("#out").value = stops.length ? "Fix the items marked above and the code will appear here." : snippet(c);
+    $("#out").value = stops.length ? "Fix the items marked in red and the code will appear here." : snippet(c);
     return stops.length;
+  }
+  function sendText(c) {
+    var fi = formatInfo(), tag = "TRPL Popup – " + c.id + " (" + fi.tag + ")", ver = "Popup: " + (S.isEdit ? "edit " : "add ") + c.id;
+    return "Pop-up for Google Tag Manager: " + (c.name || c.id) + "\n\n" +
+      stepsList(tag, ver).map(function (s, i) { return (i + 1) + ". " + s; }).join("\n") +
+      (S.mode === "gtm" ? "\n\nThis pop-up is fired by a GTM trigger. It also needs a second tag and a trigger; the settings are in the builder (open the code below with “Open an existing pop-up”)." : "") +
+      "\n\nTHE CODE\n" + snippet(c) + "\n";
   }
 
   /* ------------------------------------------------------------------ */
@@ -556,7 +679,7 @@
   /* ------------------------------------------------------------------ */
   function fit() {
     var st = $("#stage"), fr = $("#frame"), d = DEVICES[dev];
-    var sc = Math.min(1, (st.clientWidth - 24) / d[0], (st.clientHeight - 24) / d[1]);
+    var sc = Math.min(1, (st.clientWidth - 28) / d[0], (st.clientHeight - 28) / d[1]);
     fr.style.width = d[0] + "px"; fr.style.height = d[1] + "px";
     fr.style.transform = "translateX(-50%) scale(" + sc + ")";
   }
@@ -567,7 +690,7 @@
     $("#frame").contentWindow.postMessage({ type: "trplpop-preview", config: c, neighbours: { chat: $("#nChat").checked, alert: $("#nAlert").checked } }, window.location.origin);
     clearTimeout(sendPreview.t);
     sendPreview.t = setTimeout(function () {
-      if (!sendPreview.shown) $("#pstatus").textContent = $("#nAlert").checked ? "Not showing: this format waits while the ticket alert is on screen. Untick “Ticket alert” to see it." : "Nothing to show yet.";
+      if (!sendPreview.shown) $("#pstatus").textContent = $("#nAlert").checked ? "Not showing, because this format waits while the ticket alert is on screen. Untick “the ticket alert” to see it." : "Add a headline or some text to see it here.";
     }, 1800);
     sendPreview.shown = false;
   }
@@ -575,6 +698,7 @@
     if (!S.idTouched) { S.id = makeId(); var idInp = $("[data-k=id]"); if (document.activeElement !== idInp) idInp.value = S.id; }
     var c = toConfig();
     handoff(c);
+    renderSteps();
     try { localStorage.setItem("trplpop_builder_draft", JSON.stringify(S)); } catch (e) {}
     clearTimeout(renderTimer);
     renderTimer = setTimeout(sendPreview, skipPreviewDelay ? 0 : 350);
@@ -599,25 +723,42 @@
     return out.innerHTML.replace(/<p><\/p>/g, "");
   }
   function bind() {
-    $("#form").addEventListener("input", function (e) {
+    var form = $("#form");
+    form.addEventListener("input", function (e) {
       var t = e.target, k = t.getAttribute("data-k");
       if (k) {
         var v = t.type === "checkbox" ? t.checked : (t.type === "number" ? +t.value : t.value);
         if (k === "id") { v = String(v).toLowerCase().replace(/[^a-z0-9-]/g, "-").slice(0, 40); S.idTouched = !!v; if (t.value !== v) t.value = v; }
         set(S, k, v);
-        if (k.indexOf("freq.") === 0 || k === "content.image.pos") syncStatic();
         changed(); return;
       }
       var bi = t.getAttribute("data-b");
-      if (bi != null) { var f = t.getAttribute("data-bf"); S.content.buttons[+bi][f] = t.type === "checkbox" ? t.checked : t.value; if (f === "action") renderButtons(); changed(); return; }
+      if (bi != null) {
+        var f = t.getAttribute("data-bf"); S.content.buttons[+bi][f] = t.type === "checkbox" ? t.checked : t.value;
+        if (f === "action") renderButtons();
+        else if (f === "label") renderConvOpts();
+        changed(); return;
+      }
       if (t.hasAttribute("data-dev-rule")) { S.devices[t.getAttribute("data-dev-rule")] = t.checked; changed(); return; }
       if (t.hasAttribute("data-day")) { var d = +t.getAttribute("data-day"), ix = S.days.indexOf(d); if (t.checked && ix < 0) S.days.push(d); if (!t.checked && ix > -1) S.days.splice(ix, 1); changed(); }
     });
-    $("#form").addEventListener("change", function (e) { var t = e.target; if (t.getAttribute("data-k") && t.tagName === "SELECT") { set(S, t.getAttribute("data-k"), t.value); syncStatic(); changed(); } });
-    $("#form").addEventListener("click", function (e) {
-      var t = e.target.closest("[data-fmt],[data-mode],[data-preset],[data-hex],[data-copy],[data-cmd]"); if (!t) return;
-      if (t.hasAttribute("data-fmt")) { var f = FORMATS.filter(function (x) { return x.key === t.getAttribute("data-fmt"); })[0]; S.format = f.format; if (f.pos) S.bannerPos = f.pos; syncStatic(); renderCards(); changed(); }
-      else if (t.hasAttribute("data-mode")) { S.mode = t.getAttribute("data-mode"); renderCards(); renderSets(); changed(); }
+    form.addEventListener("change", function (e) {
+      var t = e.target;
+      if (t.getAttribute("data-k") && t.tagName === "SELECT") { set(S, t.getAttribute("data-k"), t.value); syncStatic(); changed(); return; }
+      if (t.id === "freqClose" || t.id === "freqConv") {
+        var o = t.id === "freqClose" ? S.freq.close : S.freq.convert, m = /^days:(\d+)$/.exec(t.value);
+        if (m) { o.mode = "days"; o.days = +m[1]; } else o.mode = t.value;
+        changed(); return;
+      }
+      if (t.id === "gtmMode") { S.mode = t.checked ? "gtm" : "auto"; renderWhere(); changed(); }
+    });
+    document.addEventListener("click", function (e) {
+      var g = e.target.closest("[data-go]");
+      if (g) { goStep(+g.getAttribute("data-go")); return; }
+      var t = e.target.closest("[data-fmt],[data-preset],[data-hex],[data-copy],[data-cmd],#addBtn2,#rmBtn2"); if (!t) return;
+      if (t.id === "addBtn2") { S.btn2 = true; if (!S.content.buttons[1].label) S.content.buttons[1] = { label: "Not now", action: "close", value: "", newTab: false, convert: false }; renderButtons(); changed(); }
+      else if (t.id === "rmBtn2") { S.btn2 = false; renderButtons(); changed(); }
+      else if (t.hasAttribute("data-fmt")) { var f = FORMATS.filter(function (x) { return x.key === t.getAttribute("data-fmt"); })[0]; S.format = f.format; if (f.pos) S.bannerPos = f.pos; syncStatic(); renderCards(); changed(); }
       else if (t.hasAttribute("data-preset")) { var p = PRESETS[+t.getAttribute("data-preset")]; S.presetName = p.name; COLOR_ROLES.forEach(function (r) { S.theme[r[0]] = p[r[0]]; }); renderCards(); changed(); }
       else if (t.hasAttribute("data-hex")) { S.theme[t.parentNode.getAttribute("data-role")] = t.getAttribute("data-hex"); S.presetName = ""; renderCards(); changed(); }
       else if (t.hasAttribute("data-copy")) { copyText($("#" + t.getAttribute("data-copy")).textContent); }
@@ -625,9 +766,9 @@
         var cmd = t.getAttribute("data-cmd"), body = $("#body"); body.focus();
         if (cmd === "link") {
           var sel = window.getSelection(), range = sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
-          var inp = el("input", { type: "url", placeholder: "https://www.trlibrary.com/…" }), w = el("div"); w.appendChild(el("span", { "class": "hint" }, "Select the words first, then give the address.")); w.appendChild(inp);
-          dialog({ title: "Link", body: w, buttons: [{ label: "Cancel" }, { label: "Add link", primary: true, onClick: function () {
-            var u = inp.value.trim(); if (!/^(https:\/\/|mailto:|tel:|\/(?!\/))/i.test(u)) { toast("Use a full https:// address."); return false; }
+          var inp = el("input", { type: "url", placeholder: "https://www.trlibrary.com/…" }), w = el("div"); w.appendChild(el("span", { "class": "hint" }, "Select the words first, then give the web address they should lead to.")); w.appendChild(inp);
+          dialog({ title: "Add a link", body: w, buttons: [{ label: "Cancel" }, { label: "Add the link", primary: true, onClick: function () {
+            var u = inp.value.trim(); if (!/^(https:\/\/|mailto:|tel:|\/(?!\/))/i.test(u)) { toast("Use a full web address starting with https://"); return false; }
             body.focus(); if (range) { sel.removeAllRanges(); sel.addRange(range); }
             document.execCommand("createLink", false, u); S.content.body = cleanBody(body.innerHTML); changed();
           } }] });
@@ -637,30 +778,35 @@
     var body = $("#body");
     body.addEventListener("input", function () { S.content.body = cleanBody(body.innerHTML); changed(); });
     body.addEventListener("paste", function (e) { e.preventDefault(); var txt = (e.clipboardData || window.clipboardData).getData("text/plain"); document.execCommand("insertText", false, txt); });
-    bindSets();
+    bindWhere();
 
-    $("#btnCopy").addEventListener("click", function () {
+    $("#prev").addEventListener("click", function () { goStep(step - 1); });
+    $("#next").addEventListener("click", function () { goStep(step + 1); });
+    function ready() {
       var c = toConfig();
-      if (handoff(c)) { toast("Fix the items marked in red first."); return; }
-      copyText(snippet(c), "Code copied. Paste it into the GTM tag.");
-    });
+      if (handoff(c)) { toast("A few things need fixing first. They are marked in red."); $("#form").scrollTop = 0; return null; }
+      return c;
+    }
+    $("#btnCopy").addEventListener("click", function () { var c = ready(); if (c) copyText(snippet(c), "Code copied. Paste it into the tag in Google Tag Manager."); });
+    $("#btnSend").addEventListener("click", function () { var c = ready(); if (c) copyText(sendText(c), "Copied. Paste it into an email or a message."); });
     $("#btnShare").addEventListener("click", function () {
-      copyText(window.location.origin + window.location.pathname + "#c=" + b64e(JSON.stringify(toConfig())), "Share link copied");
+      copyText(window.location.origin + window.location.pathname + "#c=" + b64e(JSON.stringify(toConfig())), "Link copied. Anyone who opens it sees this draft.");
     });
     $("#btnImport").addEventListener("click", function () {
-      var ta = el("textarea", { rows: "9", spellcheck: "false", placeholder: "Paste the HTML from a TRPL Popup tag in GTM, or a share link" }); ta.className = "code"; ta.style.height = "190px";
-      var w = el("div"); w.appendChild(el("span", { "class": "hint" }, "This replaces what is in the builder now.")); w.appendChild(ta);
-      dialog({ title: "Import code", body: w, buttons: [{ label: "Cancel" }, { label: "Import", primary: true, onClick: function () {
+      var ta = el("textarea", { rows: "9", spellcheck: "false", placeholder: "Paste here" }); ta.className = "code"; ta.style.height = "190px";
+      var w = el("div"); w.appendChild(el("p", { style: "margin:0 0 .6rem" }, "In Google Tag Manager, open the pop-up’s tag and copy everything in its HTML box. Paste it below. A draft link someone shared with you works too.")); w.appendChild(ta);
+      w.appendChild(el("span", { "class": "hint" }, "This replaces what is in the builder now."));
+      dialog({ title: "Open an existing pop-up", body: w, buttons: [{ label: "Cancel" }, { label: "Open it", primary: true, onClick: function () {
         var c = parseImport(ta.value);
-        if (!c || !c.format) { toast("That does not look like pop-up code. Copy the whole HTML box from the GTM tag."); return false; }
+        if (!c || !c.format) { toast("That does not look like a pop-up. Copy the whole HTML box from the tag and try again."); return false; }
         var intact = !c._c || c._c === P.checksum(c);
         try { S = fromConfig(c); } catch (err) { toast("That code could not be read."); return false; }
-        renderAll();
-        toast(intact ? "Imported " + (c.id || "") : "Imported, but the code had been edited by hand. Check it carefully.");
+        step = 0; renderAll();
+        toast(intact ? "Opened “" + (S.name || S.id) + "”." : "Opened, but the code had been changed by hand. Check it carefully.");
       } }] });
     });
     $("#btnReset").addEventListener("click", function () {
-      dialog({ title: "Start over?", body: el("p", null, "This clears everything in the builder. Pop-ups already in GTM are not affected."), buttons: [{ label: "Cancel" }, { label: "Start over", primary: true, onClick: function () { S = blank(); history.replaceState(null, "", window.location.pathname); renderAll(); } }] });
+      dialog({ title: "Start over?", body: el("p", null, "This clears everything in the builder. Pop-ups already on the website are not affected."), buttons: [{ label: "Cancel" }, { label: "Start over", primary: true, onClick: function () { S = blank(); step = 0; history.replaceState(null, "", window.location.pathname); renderAll(); } }] });
     });
     $("#devs").addEventListener("click", function (e) { var b = e.target.closest("[data-dev]"); if (!b) return; dev = b.getAttribute("data-dev"); $$("#devs button").forEach(function (x) { x.setAttribute("aria-pressed", x === b); }); fit(); setTimeout(sendPreview, 150); });
     $("#nChat").addEventListener("change", sendPreview); $("#nAlert").addEventListener("change", sendPreview);
@@ -670,22 +816,21 @@
       if (e.origin !== window.location.origin) return; var m = e.data || {};
       if (m.type === "trplpop-preview-ready") { frameReady = true; sendPreview(); }
       if (m.type === "trplpop-preview-event" && m.event === "show") { sendPreview.shown = true; $("#pstatus").textContent = ""; }
-      if (m.type === "trplpop-preview-event" && m.event === "close" && m.action !== "replace") $("#pstatus").textContent = "Closed. Click Replay to see it again.";
-      if (m.type === "trplpop-preview-status" && m.error) $("#pstatus").textContent = "";
+      if (m.type === "trplpop-preview-event" && m.event === "close" && m.action !== "replace") $("#pstatus").textContent = "Closed. Click “Play again” to see it once more.";
     });
   }
 
   function start() {
     var fromHash = /#c=/.test(window.location.hash) ? parseImport(window.location.hash) : null;
     if (fromHash && fromHash.format) { try { S = fromConfig(fromHash); } catch (e) { S = null; } }
-    else { try { var d = JSON.parse(localStorage.getItem("trplpop_builder_draft") || "null"); if (d && d.content && d.sets && d.theme && d.freq) { d.content.body = cleanBody(String(d.content.body || "")); S = d; } } catch (e) { S = null; } }
+    else { try { var d = JSON.parse(localStorage.getItem("trplpop_builder_draft") || "null"); if (d && d.content && d.sets && d.theme && d.freq) { d.content.body = cleanBody(String(d.content.body || "")); if (d.btn2 == null) d.btn2 = !!d.content.buttons[1].label; if (d.whereSome == null) d.whereSome = d.sets[0].include.length > 0; S = d; } } catch (e) { S = null; } }
     if (!S) S = blank();
     bind(); fit(); renderAll();
-    fetch("../data/sitemap.json").then(function (r) { return r.ok ? r.json() : Promise.reject(); }).then(function (j) { SITEMAP = j; renderSets(); changed(true); }).catch(function () { renderSets(); });
+    fetch("../data/sitemap.json").then(function (r) { return r.ok ? r.json() : Promise.reject(); }).then(function (j) { SITEMAP = j; renderWhere(); changed(true); }).catch(function () { renderWhere(); });
     try { frameReady = frameReady || !!$("#frame").contentWindow.TRPLPopup; } catch (e) {}
     if (frameReady) sendPreview();
   }
 
   start();
-  window.__trplBuilder = { toConfig: toConfig, fromConfig: function (c) { S = fromConfig(c); renderAll(); }, snippet: snippet, parseImport: parseImport, localToISO: localToISO, isoToLocal: isoToLocal, state: function () { return S; } };
+  window.__trplBuilder = { toConfig: toConfig, fromConfig: function (c) { S = fromConfig(c); renderAll(); }, snippet: snippet, parseImport: parseImport, localToISO: localToISO, isoToLocal: isoToLocal, state: function () { return S; }, goStep: goStep };
 })();
