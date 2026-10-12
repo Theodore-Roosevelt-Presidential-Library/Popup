@@ -261,21 +261,34 @@
           <div id="btn0"></div>
           <div id="btn1wrap"></div>
 
+          <div id="formBlock">
+            <h3>Email sign-up form <span class="n">(optional)</span></h3>
+            <p class="hint" style="margin:0 0 .5rem">Puts a Constant Contact sign-up form inside the pop-up, so people can join without leaving the page.</p>
+            <button type="button" class="mini-btn" id="useQuickForm">Use the quick sign-up form (email address only)</button>
+            <label><span class="lb">Constant Contact form</span><input type="text" id="formId" data-k="content.form.formId" spellcheck="false" placeholder="Or paste another form&rsquo;s inline code, or just its ID">
+              <span class="hint" id="formWhich">The quick form asks for an email address and adds people to Library News &amp; History. For another form, in Constant Contact go to Sign-up forms, the form&rsquo;s menu, Inline code. Keep it short.</span></label>
+            <div class="verdict maybe" id="formNote" hidden></div>
+            <div id="formOpts" hidden>
+              <label><span class="lb">After they sign up</span><select id="formAfter" data-k="content.form.after">
+                <option value="go">Take them to the Newsletter page to choose topics</option>
+                <option value="offer">Offer a button to the Newsletter page</option>
+                <option value="stay">Leave them where they are</option>
+              </select>
+                <span class="hint">Their email address is already saved either way. On the Newsletter page it is filled in for them.</span></label>
+              <div class="row">
+                <label><span class="lb">Newsletter page</span><input type="url" data-k="content.form.fallbackUrl" placeholder="https://www.trlibrary.com/newsletter"></label>
+                <label><span class="lb">Back-up button text</span><input type="text" data-k="content.form.fallbackLabel" maxlength="40" placeholder="Sign up"></label>
+              </div>
+              <span class="hint">If the form cannot load, a button to the Newsletter page shows in its place. The preview shows a stand-in, because the real form only loads on the website.</span>
+            </div>
+          </div>
+
           <details class="more" id="more1">
             <summary>More options</summary>
             <div>
               <label><span class="lb">Small line above the headline</span><input type="text" data-k="content.eyebrow" maxlength="60" placeholder="Now open"></label>
               <label class="check" id="optHideImg"><input type="checkbox" data-k="hideImagePhone"> Leave the picture out on phones</label>
               <div id="convOpts"></div>
-              <div id="formBlock">
-                <h4>Email sign-up form <span class="n">(experimental)</span></h4>
-                <label><span class="lb">Constant Contact form ID</span><input type="text" data-k="content.form.formId" class="mono" spellcheck="false" placeholder="from the form's embed code">
-                  <span class="hint">Not yet proven on the live site. If the form does not appear, the button below shows instead.</span></label>
-                <div class="row">
-                  <label><span class="lb">Back-up link</span><input type="url" data-k="content.form.fallbackUrl" placeholder="https://www.trlibrary.com/newsletter"></label>
-                  <label><span class="lb">Back-up button text</span><input type="text" data-k="content.form.fallbackLabel" placeholder="Sign up"></label>
-                </div>
-              </div>
             </div>
           </details>
         </section>

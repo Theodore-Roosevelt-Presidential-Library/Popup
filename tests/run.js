@@ -599,6 +599,137 @@ async function removeFloat(page) {
     await ctx.close();
   }
 
+  /* ---- 14. Constant Contact sign-up form inside a pop-up ---- */
+  {
+    const NIGHT = { bg: "#092A4D", text: "#FFFFFF", head: "#E7805D", btnBg: "#E7805D", btnText: "#092A4D" };
+    const FORM = { type: "ctct", formId: "aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb", fallbackUrl: "https://www.trlibrary.com/newsletter", fallbackLabel: "Sign up" };
+    const formCfg = (id) => cfg({ id, format: "popup", theme: NIGHT, content: { headline: "Mail from the Badlands", body: "<p>A few emails a year.</p>", form: FORM } });
+    // a stand-in for Constant Contact's own script: it draws every form it finds, each time it is asked
+    const fakeWidget = () => { window.SignUpFormWidget = { calls: 0, main() { this.calls++; document.querySelectorAll(".ctct-inline-form").forEach((d) => { d.innerHTML = '<div class="ctct-form-container ctct-form-embed"><div class="ctct-form-defaults" style="background:#fff;padding:30px"><div class="ctct-form-success" id="success_message_0" style="display:none">Thanks for signing up!</div><h2 class="ctct-form-header">Form title</h2><p class="ctct-form-text">Form description</p><form class="ctct-form-custom" id="ctct_form_0"><div class="ctct-form-field"><label class="ctct-form-label">Email</label><input class="ctct-form-element" type="email"></div><button type="button" class="ctct-form-button" style="background:#0078c1">Sign up</button></form><p class="ctct-gdpr-text">Consent wording</p></div></div>'; }); } }; };
+    const formState = (page, id) => page.evaluate((id) => {
+      const host = document.querySelector("#trplpop-" + id), f = host.querySelector(".ctct-inline-form"), w = window.SignUpFormWidget;
+      const g = (sel, prop) => { const e = f.querySelector(sel); return e ? getComputedStyle(e)[prop] : null; };
+      const fb = host.shadowRoot.querySelector(".formslot a");
+      return { calls: w ? w.calls : null, drawn: !!f.querySelector("#ctct_form_0"), input: !!f.querySelector("input.ctct-form-element"), header: g(".ctct-form-header", "display"), card: g(".ctct-form-defaults", "backgroundColor"), btn: g(".ctct-form-button", "backgroundColor"), label: g(".ctct-form-label", "color"), fallback: fb ? fb.getAttribute("href") : null };
+    }, id);
+
+    let { ctx, page } = await open(browser, "desktop", "/tests/bare.html");
+    await page.evaluate(fakeWidget);
+    let c = formCfg("form-late");
+    await register(page, c); await shown(page, c.id, "scrim.on"); await sleep(1600);
+    let st = await formState(page, c.id);
+    check("a form added after Constant Contact has started is drawn by asking it once to look again", st.calls === 1 && st.drawn && st.input, JSON.stringify(st));
+    check("the form takes the pop-up's look: no card, no second title, button in the pop-up's color", st.header === "none" && st.card === "rgba(0, 0, 0, 0)" && st.btn === "rgb(231, 128, 93)" && st.label === "rgb(255, 255, 255)", JSON.stringify(st));
+    check("no back-up link when the form is there", st.fallback === null);
+    await sleep(6500);
+    check("the back-up link stays away once the form has appeared", (await formState(page, c.id)).fallback === null);
+    await page.evaluate((id) => { document.querySelector("#trplpop-" + id + " .ctct-form-success").style.display = "block"; }, c.id); await sleep(500);
+    check("Constant Contact's thank-you message is counted as a sign-up", await page.evaluate((id) => (window.dataLayer || []).some((e) => e.popup_id === id && e.event === "trpl_popup_conversion" && e.popup_action === "form:ctct"), c.id));
+    await ctx.close();
+
+    // after a sign-up: on to the Newsletter page, with the address carried over
+    {
+      const withAfter = (id, after) => cfg({ id, format: "slidein", theme: NIGHT, content: { headline: "Mail from the Badlands", form: Object.assign({}, FORM, { after, afterUrl: "/tests/bare.html?arrived=1" }) } });
+      const succeed = async (page, id, email) => {
+        await page.evaluate(([id, email]) => { const f = document.querySelector("#trplpop-" + id + " .ctct-inline-form"); const i = f.querySelector("input.ctct-form-element"); i.value = email; i.dispatchEvent(new Event("input", { bubbles: true })); f.querySelector(".ctct-form-success").style.display = "block"; }, [id, email]);
+      };
+      const withBadge = () => { const m = window.SignUpFormWidget.main; window.SignUpFormWidget.main = function () { m.call(this); document.querySelectorAll(".ctct-inline-form form").forEach((f) => { if (!f.querySelector(".g-recaptcha")) { const d = document.createElement("div"); d.className = "g-recaptcha"; d.innerHTML = '<div class="grecaptcha-badge" style="position:fixed;right:0;bottom:14px;width:70px;height:60px;background:#eee">badge</div>'; f.appendChild(d); } }); }; };
+
+      ({ ctx, page } = await open(browser, "desktop", "/tests/bare.html"));
+      await page.evaluate(fakeWidget); await page.evaluate(withBadge);
+      c = withAfter("form-go", "go");
+      await register(page, c); await shown(page, c.id, "fmt-slidein.on"); await sleep(1600);
+      check("Google's floating badge is hidden while the form is in a pop-up, and the required reCAPTCHA wording is shown instead", await page.evaluate((id) => { const h = document.querySelector("#trplpop-" + id), b = h.querySelector(".grecaptcha-badge"), n = h.querySelectorAll(".trplpop-legal"); return !!b && getComputedStyle(b).visibility === "hidden" && n.length === 1 && n[0].textContent === "This site is protected by reCAPTCHA and the Google Privacy Policy and Terms of Service apply." && n[0].querySelectorAll('a[href^="https://policies.google.com/"]').length === 2; }, c.id));
+      await succeed(page, c.id, "reader@example.org");
+      await page.waitForURL("**/tests/bare.html?arrived=1", { timeout: 6000 }).catch(() => {});
+      check("after a sign-up the visitor is taken on to the chosen page", page.url().indexOf("/tests/bare.html?arrived=1") > 0, page.url());
+      check("the address is not put in the link", page.url().indexOf("example.org") < 0);
+      await page.waitForFunction(() => window.TRPLPopup && window.TRPLPopup.__trplpop);
+      check("the address waits in this tab for the next page's form", await page.evaluate(() => /reader@example\.org/.test(sessionStorage.getItem("trplpop_e") || "")));
+      check("the address never goes to the data layer", await page.evaluate(() => JSON.stringify(window.dataLayer || []).indexOf("example.org") < 0));
+      // the Newsletter page's own form appears a moment later
+      await page.evaluate(() => { const d = document.createElement("div"); d.className = "ctct-inline-form"; d.innerHTML = '<form id="ctct_form_0"><input type="email" class="ctct-form-element" id="email_address_0"></form>'; document.body.appendChild(d); });
+      await sleep(900);
+      check("on arrival the address is filled into that page's form, then forgotten", await page.evaluate(() => document.getElementById("email_address_0").value === "reader@example.org" && sessionStorage.getItem("trplpop_e") === null));
+      await ctx.close();
+
+      ({ ctx, page } = await open(browser, "desktop", "/tests/bare.html"));
+      await page.evaluate(fakeWidget);
+      c = withAfter("form-offer", "offer");
+      await register(page, c); await shown(page, c.id, "fmt-slidein.on"); await sleep(1600);
+      await succeed(page, c.id, "second@example.org"); await sleep(2600);
+      check("with the gentler setting the visitor stays put and gets a button to the page instead", page.url().indexOf("arrived") < 0 && await page.evaluate((id) => { const a = document.querySelector("#trplpop-" + id + " a.trplpop-next"); return !!a && a.getAttribute("href") === "/tests/bare.html?arrived=1" && a.textContent === "Choose what you hear about"; }, c.id));
+      await ctx.close();
+
+      ({ ctx, page } = await open(browser, "desktop", "/tests/bare.html"));
+      await page.evaluate(fakeWidget);
+      c = cfg({ id: "form-badnext", format: "slidein", theme: NIGHT, content: { headline: "x", form: Object.assign({}, FORM, { after: "go", afterUrl: "javascript:alert(1)" }) } });
+      await register(page, c); await shown(page, c.id, "fmt-slidein.on"); await sleep(1600);
+      await succeed(page, c.id, "third@example.org"); await sleep(2600);
+      check("an unsafe follow-on address is ignored", page.url().indexOf("/tests/bare.html") > 0 && page.url().indexOf("arrived") < 0 && await page.evaluate(() => sessionStorage.getItem("trplpop_e") === null));
+      await ctx.close();
+
+      ({ ctx, page } = await open(browser, "desktop", "/tests/bare.html"));
+      await page.evaluate(() => sessionStorage.setItem("trplpop_e", JSON.stringify({ e: '"><script>x</script>', t: Date.now() })));
+      await page.reload(); await page.waitForFunction(() => window.TRPLPopup && window.TRPLPopup.__trplpop);
+      await page.evaluate(() => { const d = document.createElement("div"); d.className = "ctct-inline-form"; d.innerHTML = '<input type="email" id="e2">'; document.body.appendChild(d); }); await sleep(900);
+      check("a carried value that is not an email address is thrown away", await page.evaluate(() => document.getElementById("e2").value === "" && sessionStorage.getItem("trplpop_e") === null));
+      await page.evaluate(() => sessionStorage.setItem("trplpop_e", JSON.stringify({ e: "old@example.org", t: Date.now() - 31 * 60 * 1000 })));
+      await page.reload(); await page.waitForFunction(() => window.TRPLPopup && window.TRPLPopup.__trplpop); await sleep(300);
+      check("a carried address older than 30 minutes is thrown away", await page.evaluate(() => sessionStorage.getItem("trplpop_e") === null));
+      await ctx.close();
+    }
+
+    ({ ctx, page } = await open(browser, "desktop", "/tests/bare.html"));
+    await page.evaluate(fakeWidget);
+    c = formCfg("form-self");
+    // Constant Contact draws the form itself the moment it appears (its script was only just starting)
+    await page.evaluate(() => { new MutationObserver(() => { const d = document.querySelector(".ctct-inline-form"); if (d && !d.firstChild) { const w = window.SignUpFormWidget; w.main(); w.calls = 0; } }).observe(document.body, { childList: true, subtree: true }); });
+    await register(page, c); await shown(page, c.id, "scrim.on"); await sleep(1600);
+    st = await formState(page, c.id);
+    check("a form Constant Contact has already drawn is left alone", st.calls === 0 && st.drawn, JSON.stringify(st));
+    await ctx.close();
+
+    ({ ctx, page } = await open(browser, "desktop", "/tests/bare.html"));
+    c = formCfg("form-none");
+    await register(page, c); await shown(page, c.id, "scrim.on"); await sleep(3000);
+    check("without Constant Contact on the page, nothing shows for the first few seconds", (await formState(page, c.id)).fallback === null);
+    await sleep(4800);
+    st = await formState(page, c.id);
+    check("then the back-up link takes the form's place", st.fallback === "https://www.trlibrary.com/newsletter" && !st.drawn, JSON.stringify(st));
+    await ctx.close();
+
+    ({ ctx, page } = await open(browser, "desktop", "/tests/bare.html"));
+    await page.evaluate(fakeWidget);
+    await page.evaluate(() => { const d = document.createElement("div"); d.className = "ctct-inline-form"; d.id = "page-form"; d.innerHTML = '<input id="typed" value="half@typed">'; document.body.appendChild(d); });
+    c = formCfg("form-page");
+    await register(page, c); await shown(page, c.id, "scrim.on"); await sleep(1500);
+    st = await formState(page, c.id);
+    check("on a page with its own sign-up form, the page's form is not touched and the back-up link shows at once", st.calls === 0 && st.fallback === "https://www.trlibrary.com/newsletter" && await page.evaluate(() => document.getElementById("typed").value === "half@typed"), JSON.stringify(st));
+    await ctx.close();
+
+    ({ ctx, page } = await open(browser, "desktop", "/tests/bare.html"));
+    c = formCfg("form-preview");
+    await page.evaluate((c) => window.TRPLPopup.preview(c), c); await shown(page, c.id, "scrim.on"); await sleep(600);
+    check("the builder preview shows a stand-in form in the pop-up's look, and records nothing", await page.evaluate((id) => { const f = document.querySelector("#trplpop-" + id + " .ctct-inline-form"); const i = f.querySelector("input.ctct-form-element"), b = f.querySelector(".ctct-form-button"); return !!i && getComputedStyle(b).backgroundColor === "rgb(231, 128, 93)" && /Stand-in/.test(f.textContent) && !(window.dataLayer || []).some((e) => e.popup_id === id); }, c.id));
+    await page.screenshot({ path: path.join(OUT, "form-preview-desktop.png") });
+    await ctx.close();
+
+    ({ ctx, page } = await open(browser, "phone", "/tests/bare.html"));
+    await page.evaluate(fakeWidget);
+    c = formCfg("form-phone");
+    await register(page, c); await shown(page, c.id, "scrim.on"); await sleep(1600);
+    check("form fits a phone with no sideways scroll", (await formState(page, c.id)).drawn && await noOverflow(page));
+    await ctx.close();
+
+    ({ ctx, page } = await open(browser, "desktop", "/tests/bare.html"));
+    await page.evaluate(fakeWidget);
+    c = cfg({ id: "form-badid", format: "popup", content: { headline: "x", form: { type: "ctct", formId: '"><img src=x onerror=alert(1)>' } } });
+    await register(page, c); await shown(page, c.id, "scrim.on"); await sleep(900);
+    check("a form ID that is not an ID adds no form", await page.evaluate((id) => !document.querySelector("#trplpop-" + id + " .ctct-inline-form") && window.SignUpFormWidget.calls === 0, c.id));
+    await ctx.close();
+  }
+
   await browser.close();
   srv.close();
   const failed = results.filter((r) => !r.ok);

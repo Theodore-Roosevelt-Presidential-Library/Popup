@@ -314,6 +314,43 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await go(0); await page.click('[data-fmt="popup"]'); await go(1);
   check("switching to a pop-up with no picture puts the position back to On top", (await page.$eval("#imgPos", (x) => x.value)) === "top");
 
+  /* ---- email sign-up form ---- */
+  await go(0); await page.click('[data-fmt="popup"]'); await go(1);
+  check("Message step offers an email sign-up form, with its back-up settings tucked away until a form is given", await page.isVisible("#formId") && !(await page.isVisible("#formOpts")));
+  await page.click("#useQuickForm"); await sleep(250);
+  check("one click chooses the Library's quick sign-up form", (await page.$eval("#formId", (x) => x.value)) === "c4b5465d-812f-443a-9bd4-fad477c12006" && await page.isVisible("#formOpts") && !(await page.isVisible("#useQuickForm")) && !(await page.isVisible("#formNote")));
+  check("by default a sign-up is followed by the Newsletter page", await page.evaluate(() => { const f = window.__trplBuilder.toConfig().content.form; return f.formId === "c4b5465d-812f-443a-9bd4-fad477c12006" && f.after === "go" && f.afterUrl === "https://www.trlibrary.com/newsletter"; }));
+  await page.selectOption("#formAfter", "offer"); await sleep(150);
+  check("the follow-on can be a button instead", await page.evaluate(() => window.__trplBuilder.toConfig().content.form.after === "offer"));
+  await page.selectOption("#formAfter", "stay"); await sleep(150);
+  check("or nothing at all", await page.evaluate(() => { const f = window.__trplBuilder.toConfig().content.form; return !("after" in f) && !("afterUrl" in f); }));
+  await page.selectOption("#formAfter", "go"); await sleep(150);
+  {
+    const code = await page.evaluate(() => window.__trplBuilder.snippet(window.__trplBuilder.toConfig()));
+    const back = await page.evaluate((code) => { window.__trplBuilder.fromConfig(window.__trplBuilder.parseImport(code)); return window.__trplBuilder.toConfig().content.form; }, code);
+    check("the form and its follow-on survive copying the code out and opening it again", back && back.formId === "c4b5465d-812f-443a-9bd4-fad477c12006" && back.after === "go" && back.afterUrl === "https://www.trlibrary.com/newsletter", JSON.stringify(back));
+    await go(1);
+  }
+  await page.fill("#formId", '<!-- Begin Constant Contact Inline Form Code --><div class="ctct-inline-form" data-form-id="0f0f0f0f-aaaa-4bbb-8ccc-121212121212"></div><!-- End Constant Contact Inline Form Code -->'); await sleep(200);
+  check("pasting Constant Contact's whole inline code keeps just the form's ID", (await page.$eval("#formId", (x) => x.value)) === "0f0f0f0f-aaaa-4bbb-8ccc-121212121212");
+  check("the form goes into the code with the Newsletter page as its back-up link", await page.evaluate(() => { const f = window.__trplBuilder.toConfig().content.form; return f && f.type === "ctct" && f.formId === "0f0f0f0f-aaaa-4bbb-8ccc-121212121212" && f.fallbackUrl === "https://www.trlibrary.com/newsletter" && f.fallbackLabel === "Sign up"; }));
+  check("a pop-up with a sign-up form skips the Newsletter page by itself", await page.evaluate(() => window.__trplBuilder.toConfig().rules.sets.every((s) => (s.exclude || []).some((c) => c.v === "/newsletter"))));
+  await sleep(1700);
+  {
+    const frame = page.frames().find((x) => x.url().includes("preview.html"));
+    check("the preview shows a stand-in sign-up form inside the pop-up", await frame.evaluate(() => { const f = document.querySelector("[data-trplpop] .ctct-inline-form"); return !!f && !!f.querySelector("input.ctct-form-element") && !!f.querySelector(".ctct-form-button"); }));
+  }
+  await page.screenshot({ path: path.join(OUT, "builder-step-message-form.png") });
+  await page.fill("#formId", "2311d204-640b-4788-a39e-fbd45bdfcf24"); await sleep(200);
+  check("the full newsletter form is flagged as too long for a pop-up", await page.isVisible("#formNote") && /too long for a pop-up/.test(await page.textContent("#formNote")));
+  await go(4);
+  check("Publish repeats that warning", (await page.$$eval("#checks li", (l) => l.filter((x) => /too long for a pop-up/.test(x.textContent)).length)) === 1);
+  check("no warning about the Newsletter page once it is skipped", (await page.$$eval("#checks li", (l) => l.filter((x) => /Newsletter page/.test(x.textContent)).length)) === 0);
+  await go(1); await page.fill("#formId", "not an id"); await sleep(150); await go(4);
+  check("something that is not a form ID is stopped at Publish", (await page.$$eval("#checks li", (l) => l.filter((x) => /form ID does not look right/.test(x.textContent)).length)) === 1);
+  await go(1); await page.fill("#formId", ""); await sleep(150);
+  check("clearing the form takes it out of the code", await page.evaluate(() => !window.__trplBuilder.toConfig().content.form));
+
   check("Look step says where the fonts come from", await page.evaluate(() => /trlibrary\.com/.test(document.getElementById("fontNote").textContent)));
   check("builder page itself uses the shared font list", await page.evaluate(() => document.querySelectorAll('link[href$="fonts.css"]').length === 1 && !/@font-face/.test(document.querySelector("style").textContent)));
 

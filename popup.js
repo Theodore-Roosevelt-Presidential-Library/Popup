@@ -15,7 +15,7 @@
 (function (win, doc) {
   "use strict";
 
-  var VERSION = "1.1.0";
+  var VERSION = "1.2.0";
   var SELF = (doc.currentScript && doc.currentScript.src) || "";   // where this file was loaded from
   var prior = win.TRPLPopup;
   if (prior && prior.__trplpop) return;                       // already running
@@ -200,6 +200,7 @@
   /* Visitor state: one compact first-party cookie + session storage     */
   /* ------------------------------------------------------------------ */
   var COOKIE = "trplpop", EPOCH = 1767225600000;              // 2026-01-01T00:00:00Z
+  var EMAIL_KEY = COOKIE + "_e";                               // an address on its way to the Newsletter page (this tab only)
   function mins(t) { return Math.max(0, Math.round(((t || now()) - EPOCH) / 60000)); }
   function unmins(m) { return m * 60000 + EPOCH; }
   function cookieDomain() {
@@ -250,6 +251,7 @@
     } catch (e) {}
     try { win.localStorage.removeItem(COOKIE); } catch (e2) {}
     try { win.sessionStorage.removeItem(COOKIE + "_s"); } catch (e3) {}
+    try { win.sessionStorage.removeItem(EMAIL_KEY); } catch (e4) {}
   }
   function mark(id, field) {
     var st = loadState();
@@ -671,6 +673,31 @@
     };
   }
 
+  /* The Constant Contact form is drawn by Constant Contact in the page itself, so it is styled from the page:
+     its own card, title and description are dropped (the pop-up supplies those) and it takes the pop-up's colours. */
+  function ensureFormStyle() {
+    if (doc.getElementById("trplpop-ctct")) return;
+    var S = "[data-trplpop] .ctct-inline-form ", st = doc.createElement("style");
+    st.id = "trplpop-ctct";
+    st.textContent = [
+      S + ".ctct-form-container," + S + ".ctct-form-defaults{background:transparent!important;padding:0!important;margin:0!important;border:0!important;box-shadow:none!important;max-width:none!important;color:var(--tp-text)!important;font-family:" + FONT_UI + "!important;text-align:left!important}",
+      S + ".ctct-form-header," + S + ".ctct-form-text{display:none!important}",
+      S + ".ctct-form-field{margin:0 0 .7rem!important}",
+      S + ".ctct-form-label," + S + "legend," + S + ".ctct-form-listitem label{color:var(--tp-text)!important;font-family:inherit!important;font-size:.82rem!important;font-weight:700!important;margin:0 0 .25rem!important}",
+      S + ".ctct-form-listitem label{font-weight:400!important}",
+      S + "input.ctct-form-element{box-sizing:border-box!important;width:100%!important;height:auto!important;padding:.62em .7em!important;border:1px solid rgba(37,40,42,.35)!important;border-radius:2px!important;background:#fff!important;color:#25282A!important;font:400 1rem " + FONT_UI + "!important;box-shadow:none!important}",
+      S + ".ctct-form-button{box-sizing:border-box!important;width:auto!important;display:inline-block!important;padding:.72em 1.5em!important;border:2px solid var(--tp-btn)!important;border-radius:2px!important;background:var(--tp-btn)!important;color:var(--tp-btntext)!important;font:700 .95rem/1.2 " + FONT_UI + "!important;text-transform:none!important;cursor:pointer!important;margin:.2rem 0 0!important}",
+      S + ".ctct-gdpr-text," + S + ".ctct-form-footer," + S + ".ctct-form-footer a," + S + ".ctct-gdpr-text a{color:var(--tp-text)!important;font-family:inherit!important;font-size:.68rem!important;line-height:1.4!important;opacity:.8}",
+      S + ".ctct-form-errorMessage{color:var(--tp-text)!important;font-size:.78rem!important;font-weight:700!important}",
+      S + ".ctct-form-success{color:var(--tp-text)!important}" + S + ".ctct-form-success *{color:inherit!important;font-family:inherit!important}",
+      S + ".grecaptcha-badge{visibility:hidden!important}",
+      "[data-trplpop] .trplpop-legal{margin:.5rem 0 0;color:var(--tp-text);font-family:" + FONT_UI + ";font-size:.68rem;line-height:1.4;opacity:.8}",
+      "[data-trplpop] .trplpop-legal a{color:inherit;text-decoration:underline}",
+      "[data-trplpop] .trplpop-next{display:inline-block;margin:.7rem 0 0;padding:.72em 1.5em;border:2px solid var(--tp-btn);border-radius:2px;background:var(--tp-btn);color:var(--tp-btntext);font:700 .95rem/1.2 " + FONT_UI + ";text-decoration:none}"
+    ].join("\n");
+    (doc.head || doc.documentElement).appendChild(st);
+  }
+
   function hideClass(c, key) {
     var h = (c.content || {}).hide || {};
     return h[key] === "phone" ? " hide-phone" : (h[key] === "desktop" ? " hide-desktop" : "");
@@ -803,6 +830,12 @@
       f.className = "ctct-inline-form";
       f.setAttribute("data-form-id", ct.form.formId);
       light.appendChild(f);
+      var th = c.theme || {}, tText = colour(th.text, "#25282A");
+      light.style.color = tText;
+      light.style.setProperty("--tp-text", tText);
+      light.style.setProperty("--tp-btn", colour(th.btnBg, "#E7805D"));
+      light.style.setProperty("--tp-btntext", colour(th.btnText, "#25282A"));
+      ensureFormStyle();
       host.appendChild(light);
       this.formEl = f;
     }
@@ -956,34 +989,100 @@
     if (!this.silent) mark(this.c.id, "v");
     emit("conversion", this, label || "");
   };
+  Instance.prototype.formFallback = function (why) {
+    var fb = (this.c.content.form || {}), href = safeUrl(fb.fallbackUrl), self = this;
+    if (href) {
+      var a = doc.createElement("a");
+      a.className = "btn primary"; a.setAttribute("href", href);
+      a.appendChild(doc.createTextNode(fb.fallbackLabel || "Sign up"));
+      a.addEventListener("click", function () { emit("interaction", self, "form-fallback"); self.convert("form-fallback"); });
+      var holder = this.root.querySelector(".formslot");
+      if (holder) { holder.textContent = ""; holder.appendChild(a); }
+    }
+    log(this.c.id, "Constant Contact form " + why + "; back-up link " + (href ? "shown" : "not set"));
+  };
+  /* Google lets a site hide the floating reCAPTCHA badge (which would sit on top of the chat button) as long as
+     this wording is shown with the form instead. */
+  Instance.prototype.recaptchaNotice = function () {
+    this.legalShown = true;
+    var p = doc.createElement("p"); p.className = "trplpop-legal";
+    function link(text, href) { var a = doc.createElement("a"); a.href = href; a.target = "_blank"; a.rel = "noopener"; a.appendChild(doc.createTextNode(text)); return a; }
+    p.appendChild(doc.createTextNode("This site is protected by reCAPTCHA and the Google "));
+    p.appendChild(link("Privacy Policy", "https://policies.google.com/privacy"));
+    p.appendChild(doc.createTextNode(" and "));
+    p.appendChild(link("Terms of Service", "https://policies.google.com/terms"));
+    p.appendChild(doc.createTextNode(" apply."));
+    this.formEl.parentNode.appendChild(p);
+  };
+  /* After a sign-up: optionally send the person on to a page where they can choose what they hear about
+     (the Newsletter page), carrying the address they typed so they do not have to type it twice. */
+  Instance.prototype.afterSignup = function () {
+    var fm = this.c.content.form || {}, url = safeUrl(fm.afterUrl), mode = fm.after === "go" || fm.after === "offer" ? fm.after : "", self = this;
+    if (!url || !mode || this.silent) return;
+    if (this.formEmail && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(this.formEmail)) {
+      try { win.sessionStorage.setItem(EMAIL_KEY, JSON.stringify({ e: this.formEmail, t: now() })); } catch (e) {}
+    }
+    this.formEmail = "";
+    if (mode === "offer") {
+      var a = doc.createElement("a");
+      a.className = "trplpop-next"; a.href = url;
+      a.appendChild(doc.createTextNode(String(fm.afterLabel || "Choose what you hear about").slice(0, 60)));
+      a.addEventListener("click", function () { emit("interaction", self, "form-next"); });
+      this.formEl.parentNode.appendChild(a);
+      return;
+    }
+    this.goTimer = setTimeout(function () { if (!self.closed) { emit("interaction", self, "form-next"); win.location.assign(url); } }, 1800);
+  };
+  /* Builder preview only: the preview page has no Constant Contact on it, so show a stand-in of the same shape. */
+  Instance.prototype.formStandIn = function () {
+    function mk(tag, cls, text) { var e = doc.createElement(tag); if (cls) e.className = cls; if (text) e.appendChild(doc.createTextNode(text)); return e; }
+    var wrap = mk("div", "ctct-form-container ctct-form-embed"), inner = mk("div", "ctct-form-defaults"), form = mk("form", "ctct-form-custom");
+    form.addEventListener("submit", function (e) { e.preventDefault(); });
+    var field = mk("div", "ctct-form-field"), label = mk("label", "ctct-form-label", "Email"), input = mk("input", "ctct-form-element");
+    input.type = "email"; input.setAttribute("aria-label", "Email"); input.autocomplete = "off";
+    field.appendChild(label); field.appendChild(input);
+    var btn = mk("button", "ctct-form-button", "Sign up"); btn.type = "button";
+    form.appendChild(field); form.appendChild(btn);
+    form.appendChild(mk("p", "ctct-gdpr-text", "Stand-in for the preview. On the website this is the Constant Contact form, with its own fields and consent wording."));
+    inner.appendChild(form); wrap.appendChild(inner);
+    this.formEl.appendChild(wrap);
+  };
   Instance.prototype.watchForm = function () {
-    // Best effort: Constant Contact swaps the form for a thank-you message on success.
-    var self = this, f = this.formEl, tries = 0;
+    var self = this, f = this.formEl, tries = 0, seenAt = 0, asked = false;
+    if (this.silent && !win.SignUpFormWidget) { this.formStandIn(); return; }
+    // Another sign-up form already on the page (the Newsletter page) would be redrawn by the request below,
+    // wiping anything typed into it, so there the back-up link is used instead.
+    var others = [].slice.call(doc.querySelectorAll(".ctct-inline-form")).filter(function (x) { return x !== f; }).length > 0;
+    if (others) { this.formFallback("not embedded because the page has its own sign-up form"); return; }
+    // The address someone types is remembered in this page only, so the Newsletter page can fill it in for them.
+    f.addEventListener("input", function (e) {
+      var t = e.target;
+      if (t && t.type === "email") self.formEmail = String(t.value || "").slice(0, 254);
+    }, true);
     this.formTimer = setInterval(function () {
       tries++;
       if (self.closed) { clearInterval(self.formTimer); return; }
+      // Constant Contact swaps the form for a thank-you message on success.
       var ok = f.querySelector(".ctct-form-success, [id^='success_message']");
       if (ok && (ok.offsetParent !== null || ok.getClientRects().length)) {
         clearInterval(self.formTimer);
         self.convert("form:ctct");
+        self.afterSignup();
         return;
       }
-      if (tries === 6 && !f.firstChild) {
-        // The Constant Contact widget did not render the form. Offer the fallback link.
-        var fb = (self.c.content.form || {});
-        var href = safeUrl(fb.fallbackUrl);
-        if (href) {
-          var a = doc.createElement("a");
-          a.className = "btn primary"; a.setAttribute("href", href);
-          a.appendChild(doc.createTextNode(fb.fallbackLabel || "Sign up"));
-          a.addEventListener("click", function () { emit("interaction", self, "form-fallback"); self.convert("form-fallback"); });
-          var holder = self.root.querySelector(".formslot");
-          if (holder) { holder.textContent = ""; holder.appendChild(a); }
+      if (f.firstChild && !self.legalShown && f.querySelector(".g-recaptcha, .grecaptcha-badge")) self.recaptchaNotice();
+      if (!f.firstChild && !asked) {
+        // Constant Contact only draws the forms it finds when its script starts. This form arrived later, so ask
+        // it to look again. A short wait first, in case its script is only now starting and draws the form itself.
+        var w = win.SignUpFormWidget;
+        if (w && typeof w.main === "function") {
+          if (!seenAt) seenAt = tries;
+          else if (tries - seenAt >= 2) { asked = true; try { w.main(); } catch (e) { log(self.c.id, "Constant Contact could not be asked to draw the form", e); } }
         }
-        log(self.c.id, "Constant Contact form did not render; fallback " + (href ? "shown" : "not set"));
       }
-      if (tries > 1200) clearInterval(self.formTimer);
-    }, 500);
+      if (tries === 28 && !f.firstChild) self.formFallback("did not appear after 7 seconds");
+      if (tries > 2400) clearInterval(self.formTimer);
+    }, 250);
   };
   Instance.prototype.close = function (reason) {
     if (this.closed) return;
@@ -993,6 +1092,7 @@
     doc.removeEventListener("keydown", this.onKey, true);
     if (this.ro) { try { this.ro.disconnect(); } catch (e) {} }
     if (this.formTimer) clearInterval(this.formTimer);
+    if (this.goTimer) clearTimeout(this.goTimer);
     if (this.zone === "top") clearTopPush();
     if (this.zone === "bottom") clearBottomLift();
     if (!this.silent && reason !== "replace") {
@@ -1333,9 +1433,34 @@
   doc.addEventListener("trplfloat:state", function () { floatSettledByEvent = true; tick(); });
   win.addEventListener("resize", function () { tick(); });
 
+  /* Someone who has just signed up in a pop-up and been sent on to the Newsletter page: put their address into
+     that page's form. It travels in this browser tab only (sessionStorage), never in a link or to analytics,
+     and is forgotten once used or after 30 minutes. */
+  function carryEmail() {
+    var raw = null, data = null, tries = 0;
+    try { raw = win.sessionStorage.getItem(EMAIL_KEY); } catch (e) {}
+    if (!raw) return;
+    try { data = JSON.parse(raw); } catch (e2) {}
+    function forget() { try { win.sessionStorage.removeItem(EMAIL_KEY); } catch (e) {} }
+    if (!data || typeof data.e !== "string" || !(now() - data.t < 30 * 60 * 1000) || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.e)) { forget(); return; }
+    var timer = setInterval(function () {
+      tries++;
+      var list = doc.querySelectorAll(".ctct-inline-form input[type=email]"), field = null;
+      for (var i = 0; i < list.length; i++) { var h = list[i]; while (h && !(h.getAttribute && h.getAttribute("data-trplpop"))) h = h.parentNode; if (!h) { field = list[i]; break; } }
+      if (field) {
+        clearInterval(timer); forget();
+        if (!field.value) {
+          field.value = data.e;
+          try { field.dispatchEvent(new win.Event("input", { bubbles: true })); field.dispatchEvent(new win.Event("change", { bubbles: true })); } catch (e) {}
+        }
+      } else if (tries > 40) { clearInterval(timer); }       // 20 seconds; the address stays for a later page in this tab
+    }, 500);
+  }
+
   function start() {
     if (started) return;
     started = true; bootAt = now();
+    try { carryEmail(); } catch (e0) {}
     for (var i = 0; i < backlog.length; i++) handle(backlog[i]);
     backlog = [];
     for (var j = 0; j < order.length; j++) { try { consider(campaigns[order[j]]); } catch (e) { log(order[j], "skipped after an error", e); } }

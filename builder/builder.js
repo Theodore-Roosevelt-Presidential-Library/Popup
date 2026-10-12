@@ -58,6 +58,17 @@
     slidein:  "https://www.canva.com/design/DAHWzpikiKw/edit",
     takeover: "https://www.canva.com/design/DAHWzkUgY7A/edit"
   };
+  /* Constant Contact forms that are too long for a pop-up, by form ID. */
+  var LONG_FORMS = { "2311d204-640b-4788-a39e-fbd45bdfcf24": "the full newsletter form, with four fields and nine lists", "ed729fe3-a0da-40e3-abc8-180b3610c7d3": "the Press Updates form, with five fields" };
+  var FORM_BACKUP = "https://www.trlibrary.com/newsletter";
+  /* The short form made for pop-ups (Constant Contact: "Pop-up Quick Sign-up (email only)"): email address only, one list. */
+  var QUICK_FORM = "c4b5465d-812f-443a-9bd4-fad477c12006";
+  /* People paste the whole inline code from Constant Contact; keep just the form's ID. */
+  function formIdFrom(v) {
+    v = String(v || "").trim();
+    var m = /data-form-id\s*=\s*["']?([A-Za-z0-9-]{8,64})/i.exec(v) || /\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/i.exec(v);
+    return m ? m[1] : v;
+  }
   var SHADES = [[0, "Not at all"], [0.4, "A little"], [0.65, "Medium"], [0.85, "A lot"]];
   var FOCUS = [["center", "The middle"], ["top", "The top"], ["bottom", "The bottom"], ["left", "The left side"], ["right", "The right side"]];
   var COLOR_ROLES = [["bg", "Background"], ["text", "Body text"], ["head", "Headline"], ["btnBg", "Button"], ["btnText", "Button text"]];
@@ -170,7 +181,7 @@
       content: {
         eyebrow: "", headline: "", body: "", image: { url: "", alt: "", pos: "top" },
         buttons: [{ label: "", action: "url", value: "", newTab: false, convert: true }, { label: "", action: "close", value: "", newTab: false, convert: false }],
-        form: { formId: "", fallbackUrl: "", fallbackLabel: "" }
+        form: { formId: "", fallbackUrl: "", fallbackLabel: "", after: "go" }
       },
       hideImagePhone: false,
       mode: "auto", devices: { desktop: true, tablet: true, phone: true },
@@ -231,8 +242,9 @@
     });
     if (!ct.buttons.length) delete ct.buttons;
     if (S.format !== "banner" && sc.form.formId.trim()) {
-      ct.form = { type: "ctct", formId: sc.form.formId.trim() };
-      if (sc.form.fallbackUrl.trim()) { ct.form.fallbackUrl = sc.form.fallbackUrl.trim(); ct.form.fallbackLabel = sc.form.fallbackLabel.trim() || "Sign up"; }
+      ct.form = { type: "ctct", formId: formIdFrom(sc.form.formId), fallbackUrl: sc.form.fallbackUrl.trim() || FORM_BACKUP, fallbackLabel: sc.form.fallbackLabel.trim() || "Sign up" };
+      var after = oneOf(sc.form.after, ["go", "offer", "stay"], "go");
+      if (after !== "stay") { ct.form.after = after; ct.form.afterUrl = ct.form.fallbackUrl; }
     }
     c.content = ct;
     var r = {};
@@ -292,7 +304,7 @@
     arr(ct.buttons).slice(0, 2).forEach(function (b, i) { b = obj(b); s.content.buttons[i] = { label: str(b.label, 40), action: oneOf(b.action, ACTIONS.map(function (a) { return a[0]; }), "url"), value: str(b.value, 500), newTab: !!b.newTab, convert: !!b.convert }; });
     s.btn2 = !!s.content.buttons[1].label;
     var fm = obj(ct.form);
-    if (fm.formId) s.content.form = { formId: str(fm.formId, 64), fallbackUrl: str(fm.fallbackUrl, 500), fallbackLabel: str(fm.fallbackLabel, 40) };
+    if (fm.formId) s.content.form = { formId: str(fm.formId, 64), fallbackUrl: str(fm.afterUrl || fm.fallbackUrl, 500), fallbackLabel: str(fm.fallbackLabel, 40), after: oneOf(fm.after, ["go", "offer"], "stay") };
     s.mode = r.mode === "gtm" ? "gtm" : "auto";
     var dv = arr(r.devices);
     if (dv.length) s.devices = { desktop: dv.indexOf("desktop") > -1, tablet: dv.indexOf("tablet") > -1, phone: dv.indexOf("phone") > -1 };
@@ -356,7 +368,7 @@
     "private-events": "Private events", press: "Press"
   };
   var HIDDEN_SECTIONS = { node: 1, privacy: 1, rsvp: 1, user: 1 };
-  var STANDING_NAMES = [["ends", "/print", "Print views"], ["starts", "/tickets", "Ticket pages"], ["starts", "/rsvp", "RSVP pages"],
+  var STANDING_NAMES = [["starts", "/newsletter", "Newsletter page"], ["ends", "/print", "Print views"], ["starts", "/tickets", "Ticket pages"], ["starts", "/rsvp", "RSVP pages"],
     ["starts", "/privacy", "Privacy page"], ["starts", "/node/", "Pages without a proper address"], ["starts", "/user", "Staff sign-in pages"]];
   var STEPS = ["Format", "Message", "Look", "Where & when", "Publish"];
   var FREQ_CLOSE = [["days:1", "Wait a day, then it can show again"], ["days:7", "Wait a week"], ["days:30", "Wait 30 days"], ["days:90", "Wait 90 days"],
@@ -703,6 +715,12 @@
     var fmt = S.format;
     $("#optPopup").hidden = fmt !== "popup"; $("#optSlide").hidden = fmt !== "slidein"; $("#optBackdrop").hidden = fmt !== "popup";
     $("#formBlock").hidden = fmt === "banner";
+    var fid = formIdFrom(S.content.form.formId), note = $("#formNote");
+    $("#formOpts").hidden = !fid;
+    $("#useQuickForm").hidden = fid === QUICK_FORM;
+    if (!S.content.form.after) S.content.form.after = "go";
+    note.hidden = !LONG_FORMS[fid];
+    if (LONG_FORMS[fid]) note.textContent = "That is " + LONG_FORMS[fid] + ". It is too long for a pop-up. Make a short form in Constant Contact that asks for an email address only, and use that one.";
     var opts = posOptions(fmt);
     S.content.image.pos = imagePos();
     $("#optHideImg").hidden = S.content.image.pos === "bg";
@@ -714,7 +732,7 @@
   /* Open "More options" where a loaded pop-up already uses something inside it. */
   function openUsedOptions() {
     var c = S.content;
-    $("#more1").open = !!(c.eyebrow || c.form.formId || S.hideImagePhone);
+    $("#more1").open = !!(c.eyebrow || S.hideImagePhone);
     $("#more2").open = !S.presetName;
     $("#more3").open = !!(S.days.length || S.from || S.to || S.sets.length > 1 || S.sets[0].conds.length || S.mode === "gtm" || S.sets.some(function (s) { return s.include.concat(s.exclude).some(function (x) { return x.op === "regex" && !sectionOf(x); }); }));
   }
@@ -747,7 +765,9 @@
     if (ct.image && !okUrl(ct.image.url)) add("stop", "The picture’s address must start with https://", 1);
     if (ct.image && ct.image.pos !== "bg" && !ct.image.alt) add("warn", "Describe the picture for people who cannot see it.", 1);
     if (ct.form && !/^[A-Za-z0-9-]{8,64}$/.test(ct.form.formId)) add("stop", "The sign-up form ID does not look right.", 1);
-    if (ct.form && !ct.form.fallbackUrl) add("warn", "Add a back-up link for the sign-up form in case the form does not load.", 1);
+    if (ct.form && !okUrl(ct.form.fallbackUrl)) add("stop", "The sign-up form\u2019s back-up link needs a full web address starting with https://", 1);
+    if (ct.form && LONG_FORMS[ct.form.formId]) add("warn", "That is " + LONG_FORMS[ct.form.formId] + ". It is too long for a pop-up. Use a short form that asks for an email address only.", 1);
+    if (ct.form && S.mode !== "gtm" && S.sets.some(function (st) { return P.matchPath(st, "/newsletter"); })) add("warn", "This would also show on the Newsletter page, which already has the sign-up form. Skip that page.", 3);
     if (!(ct.buttons || []).length && !ct.form && c.format !== "banner") add("warn", "There is no button, so people can only close it.", 1);
     if (c.format === "banner" && ((ct.headline || "") + (ct.body || "").replace(/<[^>]*>/g, "")).length > 110) add("warn", "That is a lot of words for a banner. It will run to several lines on phones.", 1);
     TERMS.forEach(function (t) { if (t[0].test(text)) add("warn", t[1], 1); });
@@ -867,9 +887,15 @@
       var t = e.target, k = t.getAttribute("data-k");
       if (k) {
         var v = t.type === "checkbox" ? t.checked : (t.type === "number" ? +t.value : t.value);
+        if (k === "content.form.formId") { var fid2 = formIdFrom(v); if (fid2 !== String(v).trim()) { v = fid2; t.value = fid2; } }
         if (k === "id") { v = String(v).toLowerCase().replace(/[^a-z0-9-]/g, "-").slice(0, 40); S.idTouched = !!v; if (t.value !== v) t.value = v; }
         set(S, k, v);
         if (k === "content.image.url") { autoLook(); renderPhoto(); checkImage(); }
+        if (k === "content.form.formId") {
+          // The Newsletter page already has the sign-up form, so a pop-up carrying one skips it.
+          if (formIdFrom(v)) S.sets.forEach(function (st) { if (P.matchPath(st, "/newsletter") && !st.include.some(function (c) { return /newsletter/.test(c.v || ""); })) addCond(st, "exclude", { t: "path", op: "starts", v: "/newsletter" }); });
+          syncStatic(); renderWhere();
+        }
         changed(); return;
       }
       var bi = t.getAttribute("data-b");
@@ -897,9 +923,10 @@
     document.addEventListener("click", function (e) {
       var g = e.target.closest("[data-go]");
       if (g) { goStep(+g.getAttribute("data-go")); return; }
-      var t = e.target.closest("[data-fmt],[data-preset],[data-hex],[data-copy],[data-cmd],#addBtn2,#rmBtn2"); if (!t) return;
+      var t = e.target.closest("[data-fmt],[data-preset],[data-hex],[data-copy],[data-cmd],#addBtn2,#rmBtn2,#useQuickForm"); if (!t) return;
       if (t.id === "addBtn2") { S.btn2 = true; if (!S.content.buttons[1].label) S.content.buttons[1] = { label: "Not now", action: "close", value: "", newTab: false, convert: false }; renderButtons(); changed(); }
       else if (t.id === "rmBtn2") { S.btn2 = false; renderButtons(); changed(); }
+      else if (t.id === "useQuickForm") { var fi = $("#formId"); fi.value = QUICK_FORM; fi.dispatchEvent(new Event("input", { bubbles: true })); }
       else if (t.hasAttribute("data-fmt")) { var f = FORMATS.filter(function (x) { return x.key === t.getAttribute("data-fmt"); })[0]; S.format = f.format; if (f.pos) S.bannerPos = f.pos; if (!S.content.image.url.trim()) S.content.image.pos = posOptions(S.format)[0][0]; syncStatic(); renderCards(); autoLook(); checkImage(); changed(); }
       else if (t.hasAttribute("data-preset")) { var p = PRESETS[+t.getAttribute("data-preset")]; S.presetName = p.name; S.lookTouched = true; COLOR_ROLES.forEach(function (r) { S.theme[r[0]] = p[r[0]]; }); renderCards(); renderPhoto(); changed(); }
       else if (t.hasAttribute("data-hex")) { S.theme[t.parentNode.getAttribute("data-role")] = t.getAttribute("data-hex"); S.presetName = ""; S.lookTouched = true; renderCards(); renderPhoto(); changed(); }

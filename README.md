@@ -57,6 +57,20 @@ The Canva links above are the original designs, shared with the Library's Canva 
 
 In a pop-up's settings the photo is `theme.photo`: `{ "url": "https://…", "shade": 0.65, "focus": "top" }`. `shade` runs from 0 (none) to 0.95; `focus` is `center`, `top`, `bottom`, `left` or `right`.
 
+## Email sign-up form
+
+A pop-up, slide-in or takeover can hold a Constant Contact sign-up form (builder, Message step).
+
+- **The quick form.** Constant Contact has a form made for this: "Pop-up Quick Sign-up (email only)", ID `c4b5465d-812f-443a-9bd4-fad477c12006`. It asks for an email address and adds people to Library News & History. The builder's "Use the quick sign-up form" button fills it in. Any other form's inline code or ID can be pasted instead; the builder warns about the two long forms (Newsletter Sign-up Form and Press Updates).
+- **After a sign-up.** By default the person is taken on to the Newsletter page to choose topics, with their address already filled in. The builder can make that a button instead, or leave them where they are. The address is saved in Constant Contact before any of this happens.
+- **How the address is carried.** It is kept in the visitor's own browser tab (`sessionStorage`), never in a link and never sent to analytics, and is forgotten once filled in or after 30 minutes. `popup.js` does the filling in on arrival, so the Newsletter page needs no change.
+- **How the form gets drawn.** Constant Contact only draws the forms it finds when its script starts. A pop-up's form arrives later, so `popup.js` asks Constant Contact to look again (`SignUpFormWidget.main()`). That call is not a documented part of Constant Contact, so if it ever stops working a button to the Newsletter page shows after seven seconds.
+- **Look.** The form takes the pop-up's colours and fonts. Its own title and description are hidden; the pop-up's headline and text do that job. Constant Contact's consent wording stays.
+- **reCAPTCHA.** Constant Contact adds Google's floating badge, which would sit on top of the chat button. It is hidden while the form is in a pop-up, and the wording Google requires in its place is shown under the form.
+- **Pages with their own form.** On the Newsletter page the pop-up shows the button and leaves the page's form alone. The builder skips the Newsletter page for any pop-up with a form.
+- **Counting.** Constant Contact's thank-you message counts as a conversion (`popup_action` = `form:ctct`).
+- **Preview.** The builder preview shows a stand-in, because the real form only loads on the website.
+
 ## Fonts
 
 Pop-ups use the website's fonts: Dharma Gothic E for headlines, Clearface for text, Frutiger for buttons and labels. The font files stay on www.trlibrary.com; nothing is hosted here.
@@ -117,8 +131,8 @@ TRPLPopup.push(["config", { sessionOverlayCap: 1 }]);  // site-wide settings, fr
 ### Running the checks
 
 ```sh
-NODE_PATH=$(npm root -g) node tests/run.js                       # runtime, 179 checks
-NODE_PATH=$(npm root -g) node tests/builder.js                   # builder, 107 checks
+NODE_PATH=$(npm root -g) node tests/run.js                       # runtime, 201 checks
+NODE_PATH=$(npm root -g) node tests/builder.js                   # builder, 122 checks
 ```
 
 Both need Node and Playwright with Chromium. Screenshots go to `tests/out/`.
@@ -133,4 +147,4 @@ Both need Node and Playwright with Chromium. Screenshots go to `tests/out/`.
 - The builder is open to anyone with the address. That is by design: it is a design tool and cannot change the live site. Publishing happens only in GTM.
 - A published GTM container is public, so a pop-up scheduled for a future date is readable by anyone who inspects it. Keep embargoed copy in an unpublished GTM workspace until release.
 - Safari keeps script-written cookies for about seven days, so "30 days" behaves as roughly seven for Safari visitors who do not return within the week.
-- The Constant Contact form block is unproven until tried on the live site with a real form.
+- The Constant Contact form has been tried by hand on the live site with the quick form: it draws and takes the pop-up's look. A real sign-up has not been submitted through a pop-up, so the thank-you, the move to the Newsletter page and the filled-in address are proven only against a stand-in in the tests. None of it is live until `popup.js` 1.2.0 is pushed.

@@ -7,12 +7,12 @@ Home: `https://popup.labs.trlibrary.com` (GitHub Pages, this repo).
 
 | Piece | State |
 |---|---|
-| Runtime `popup.js`: four formats, page rules, triggers, frequency, queue, ticket alert, chat launcher and fixed-header handling, data-layer events, JavaScript interface | Built. 179 automated checks pass at phone, tablet and desktop widths. |
-| Builder: editor, brand presets, sitemap page rules, live preview, Copy the code, open existing, share link | Built at `/builder/` as a five-step guided flow in plain language. 107 automated checks pass. |
+| Runtime `popup.js`: four formats, page rules, triggers, frequency, queue, ticket alert, chat launcher and fixed-header handling, data-layer events, JavaScript interface | Built. 201 automated checks pass at phone, tablet and desktop widths. |
+| Builder: editor, brand presets, sitemap page rules, live preview, Copy the code, open existing, share link | Built at `/builder/` as a five-step guided flow in plain language. 122 automated checks pass. |
 | Demo page | Built (`/demo/`). |
 | Sitemap copy and nightly refresh job | Built. The job starts once the repo is pushed. Confirmed that trlibrary.com does not allow its sitemap to be read from another domain, so the copy is needed. |
 | One-time GTM import file | Written, not yet imported into GTM. GTM shows every change before confirming. |
-| Constant Contact form block | Written, unproven. Needs a real form ID and a test on the live site. |
+| Constant Contact form block | Working in `popup.js` 1.2.0. A live test on 12 October 2026 showed the form never appeared (Constant Contact only draws forms present when its script starts), so the runtime now asks it to look again. A short form was created in Constant Contact for pop-ups ("Pop-up Quick Sign-up (email only)", `c4b5465d-812f-443a-9bd4-fad477c12006`, list: Library News & History) and tried by hand in a slide-in on trlibrary.com. After a sign-up the visitor can be taken on to the Newsletter page with the address filled in. Still needed: one real sign-up through a pop-up once 1.2.0 is pushed. |
 | Still to build (phase 4) | Success and yes/no views, collapsed tab, countdown, visitor-history rules, A/B split, location. |
 | Not done | OptinMonster inventory, GitHub Pages setup, GTM import, cutover. |
 
