@@ -20,9 +20,12 @@
     { name: "Sunset Yellow", hex: "#F9D635" }, { name: "Spring Green", hex: "#87BB41" }, { name: "Bright Forest", hex: "#8FC895" },
     { name: "Dark Forest", hex: "#1B4532" }, { name: "Night Sky", hex: "#092A4D" }, { name: "Gray Sky", hex: "#99ADC5" }
   ];
-  /* The eight approved pairings from the rsvp.labs builder, mapped to pop-up roles, plus plain White. */
+  /* Plain White, the two combinations in regular use, then the eight approved pairings from the rsvp.labs builder. */
   var PRESETS = [
     { name: "White",          bg: "#FFFFFF", text: "#25282A", head: "#092A4D", btnBg: "#E7805D", btnText: "#25282A" },
+    /* The two combinations in regular use (Peter Troutner, October 2026). */
+    { name: "Navy & Orange",  bg: "#092A4D", text: "#FFFFFF", head: "#E7805D", btnBg: "#E7805D", btnText: "#092A4D" },
+    { name: "Forest & Yellow", bg: "#1B4532", text: "#FFFFFF", head: "#F9D635", btnBg: "#F9D635", btnText: "#1B4532" },
     { name: "Badlands Night", bg: "#25282A", text: "#FFFFFF", head: "#FC924E", btnBg: "#FC924E", btnText: "#25282A" },
     { name: "Elkhorn",        bg: "#1B4532", text: "#FFFFFF", head: "#87BB41", btnBg: "#87BB41", btnText: "#25282A" },
     { name: "Night Sky",      bg: "#092A4D", text: "#FFFFFF", head: "#F9D635", btnBg: "#F9D635", btnText: "#092A4D" },
@@ -45,9 +48,10 @@
     slidein:  { w: 1200, h: 800,  safeW: 810, safeH: 500,  crop: "A short message trims the top and bottom of the photo. A long one trims the sides." },
     takeover: { w: 2400, h: 1600, safeW: 720, safeH: 1350, crop: "Computers trim a little off the top and bottom. Phones are tall and narrow, so they show only the middle third." }
   };
-  /* Canva templates at those sizes, with the crop guides drawn in. Leave a link empty to hide it.
-     These are the original designs, which open only for people the designs are shared with. To let anyone make
-     their own copy, replace each with its Canva template link (in Canva: Share, then Template link). */
+  /* Canva crop guides at those sizes. Leave a link empty to hide it.
+     These are the original designs, shared with the Library's Canva team, so each person makes their own copy
+     before adding a photo. For people outside the team, replace each with its Canva template link
+     (in Canva: Share, then Template link), which hands out a copy automatically. */
   var CANVA_TEMPLATES = {
     banner:   "https://www.canva.com/design/DAHWztAL01Q/edit",
     popup:    "https://www.canva.com/design/DAHWzmxD0Uo/edit",
@@ -159,10 +163,10 @@
   function newSet() { return { include: [], exclude: clone(STANDING), conds: [], match: "all", trigger: { type: "load", seconds: 5, percent: 50 } }; }
   function blank() {
     return {
-      name: "", id: "", idTouched: false, isEdit: false, btn2: false, whereSome: false,
+      name: "", id: "", idTouched: false, isEdit: false, btn2: false, whereSome: false, lookTouched: false,
       format: "popup", bannerPos: "top", slidePos: "bottom-right", size: "m", backdropClose: true, priority: 5,
       presetName: "White", theme: { bg: "#FFFFFF", text: "#25282A", head: "#092A4D", btnBg: "#E7805D", btnText: "#25282A" },
-      photo: { url: "", shade: 0.65, focus: "center" },
+      photo: { shade: 0.65, focus: "center" },          // used when the picture sits behind the words
       content: {
         eyebrow: "", headline: "", body: "", image: { url: "", alt: "", pos: "top" },
         buttons: [{ label: "", action: "url", value: "", newTab: false, convert: true }, { label: "", action: "close", value: "", newTab: false, convert: false }],
@@ -175,6 +179,14 @@
       freq: { close: { mode: "days", days: 30 }, convert: { mode: "days", days: 365 } }
     };
   }
+  function posOptions(fmt) {
+    return fmt === "popup" ? [["top", "On top"], ["left", "On the left"], ["right", "On the right"], ["bg", "Behind the words"]]
+      : fmt === "takeover" ? [["bg", "Behind the words"], ["top", "Above the words"]]
+      : fmt === "banner" ? [["bg", "Behind the words"]]
+      : [["top", "On top"], ["bg", "Behind the words"]];
+  }
+  function imagePos() { var o = posOptions(S.format); return o.some(function (x) { return x[0] === S.content.image.pos; }) ? S.content.image.pos : o[0][0]; }
+  function isBackground() { return imagePos() === "bg"; }
   function formatKey() { return S.format === "banner" ? "banner-" + S.bannerPos : S.format; }
   function formatInfo() { var k = formatKey(); return FORMATS.filter(function (f) { return f.key === k; })[0]; }
 
@@ -199,13 +211,14 @@
     if (S.format === "popup") { c.size = S.size; if (!S.backdropClose) c.backdropClose = false; }
     if (+S.priority) c.priority = +S.priority;
     c.theme = { bg: S.theme.bg, text: S.theme.text, head: S.theme.head, btnBg: S.theme.btnBg, btnText: S.theme.btnText };
-    if (S.photo.url.trim()) { c.theme.photo = { url: S.photo.url.trim(), shade: S.photo.shade }; if (S.photo.focus !== "center") c.theme.photo.focus = S.photo.focus; }
+    var picUrl = S.content.image.url.trim(), behind = isBackground();
+    if (picUrl && behind) { c.theme.photo = { url: picUrl, shade: S.photo.shade }; if (S.photo.focus !== "center") c.theme.photo.focus = S.photo.focus; }
     var ct = {}, sc = S.content;
     if (sc.eyebrow.trim()) ct.eyebrow = sc.eyebrow.trim();
     if (sc.headline.trim()) ct.headline = sc.headline.trim();
     if (sc.body && sc.body.replace(/<[^>]*>/g, "").trim()) ct.body = sc.body;
-    if (S.format !== "banner" && sc.image.url.trim() && sc.image.pos !== "bg") {
-      ct.image = { url: sc.image.url.trim(), alt: sc.image.alt.trim(), pos: sc.image.pos };
+    if (picUrl && !behind) {
+      ct.image = { url: picUrl, alt: sc.image.alt.trim(), pos: imagePos() };
       if (S.hideImagePhone) ct.hide = { image: "phone" };
     }
     ct.buttons = sc.buttons.filter(function (b, i) { return b.label.trim() && (i === 0 || S.btn2); }).map(function (b, i) {
@@ -247,13 +260,7 @@
   function importPhoto(p) {
     p = p && typeof p === "object" ? p : {};
     var sh = typeof p.shade === "number" && p.shade >= 0 && p.shade <= 0.95 ? p.shade : 0.65;
-    return { url: str(p.url, 500), shade: sh, focus: oneOf(p.focus, FOCUS.map(function (f) { return f[0]; }), "center") };
-  }
-  /* Takeovers used to carry their background as a picture placed "behind the text". It is now the background photo. */
-  function adoptOldBackground(s, tint) {
-    if (s.content.image.pos !== "bg") return;
-    if (s.content.image.url && !s.photo.url) { s.photo.url = s.content.image.url; s.photo.shade = typeof tint === "number" && tint >= 0 && tint <= 0.95 ? tint : 0.72; }
-    s.content.image = { url: "", alt: "", pos: "top" };
+    return { shade: sh, focus: oneOf(p.focus, FOCUS.map(function (f) { return f[0]; }), "center") };
   }
   function importCond(c) {
     c = c && typeof c === "object" ? c : {};
@@ -273,12 +280,14 @@
     var th = obj(c.theme);
     COLOR_ROLES.forEach(function (x) { s.theme[x[0]] = hex(th[x[0]], s.theme[x[0]]); });
     var hit = PRESETS.filter(function (p) { return COLOR_ROLES.every(function (x) { return p[x[0]].toLowerCase() === String(s.theme[x[0]]).toLowerCase(); }); })[0];
-    s.presetName = hit ? hit.name : "";
+    s.presetName = hit ? hit.name : ""; s.lookTouched = true;
     s.content.eyebrow = str(ct.eyebrow, 60); s.content.headline = str(ct.headline, 90); s.content.body = cleanBody(str(ct.body, 4000));
     var im = obj(ct.image);
     if (im.url) s.content.image = { url: str(im.url, 500), alt: str(im.alt, 140), pos: oneOf(im.pos, ["top", "left", "right", "bg"], "top") };
-    s.photo = importPhoto(th.photo);
-    adoptOldBackground(s, th.imageTint);
+    var ph = obj(th.photo);
+    s.photo = importPhoto(ph);
+    if (ph.url) s.content.image = { url: str(ph.url, 500), alt: "", pos: "bg" };                 // a picture behind the words
+    else if (im.url && im.pos === "bg") s.photo.shade = typeof th.imageTint === "number" && th.imageTint >= 0 && th.imageTint <= 0.95 ? th.imageTint : 0.72;   // earlier takeovers
     s.hideImagePhone = obj(ct.hide).image === "phone";
     arr(ct.buttons).slice(0, 2).forEach(function (b, i) { b = obj(b); s.content.buttons[i] = { label: str(b.label, 40), action: oneOf(b.action, ACTIONS.map(function (a) { return a[0]; }), "url"), value: str(b.value, 500), newTab: !!b.newTab, convert: !!b.convert }; });
     s.btn2 = !!s.content.buttons[1].label;
@@ -589,39 +598,80 @@
     if (t > lum(lo) && t < lum(hi)) return 1;
     return Math.min(ratio(textHex, lo), ratio(textHex, hi));
   }
+  /* 2 = fine over any picture, even pure white or black behind the words (WCAG AA: 4.5 for text, 3 for the headline);
+     1 = fine over an ordinary mid-tone picture, but not over its brightest or darkest parts; 0 = not even that. */
   function photoReadability() {
-    var t = S.theme, sh = S.photo.shade;
-    return Math.min(worstOverPhoto(t.text, t.bg, sh) / 4.5, worstOverPhoto(t.head, t.bg, sh) / 3);   // 1 or more = fine over any photo
+    var t = S.theme, sh = S.photo.shade, mid = mix(t.bg, sh, 128);
+    if (worstOverPhoto(t.text, t.bg, sh) >= 4.5 && worstOverPhoto(t.head, t.bg, sh) >= 3) return 2;
+    return ratio(t.text, mid) >= 4.5 && ratio(t.head, mid) >= 3 ? 1 : 0;
   }
+  function whatName() { var f = S.format; return f === "popup" ? "pop-up" : f === "slidein" ? "slide-in" : f; }
   function renderPhoto() {
-    if (!S.photo) S.photo = { url: "", shade: 0.65, focus: "center" };
-    var fmt = S.format, spec = PHOTO_SPECS[fmt], info = formatInfo(), what = fmt === "popup" ? "pop-up" : fmt === "slidein" ? "slide-in" : fmt, has = !!S.photo.url.trim();
+    var fmt = S.format, spec = PHOTO_SPECS[fmt], what = whatName(), behind = isBackground(), has = behind && !!S.content.image.url.trim();
     var dark = lum(S.theme.bg) < 0.25;
-    $("#photoWhat").textContent = what;
-    $("#photoOpts").hidden = !has;
-    $("#photoShadeLabel").textContent = dark ? "Darken the photo" : "Lighten the photo";
+    /* Message step: the picture block */
+    $("#imgAltWrap").hidden = behind; $("#imgFocusWrap").hidden = !behind; $("#bgOpts").hidden = !behind;
+    $("#bgHint").textContent = "The picture stretches to fill the whole " + what + ", behind the words. Darken it in the next step, Look, so the words stay easy to read.";
+    $("#photoFocus").innerHTML = FOCUS.map(function (x) { return "<option value='" + x[0] + "'" + (x[0] === S.photo.focus ? " selected" : "") + ">" + x[1] + "</option>"; }).join("");
+    /* Look step: shade and readability */
+    $("#photoOpts").hidden = !has; $("#photoNone").hidden = has;
+    $("#photoShadeLabel").textContent = dark ? "Darken the picture" : "Lighten the picture";
     var near = SHADES.reduce(function (best, x) { return Math.abs(x[0] - S.photo.shade) < Math.abs(best[0] - S.photo.shade) ? x : best; }, SHADES[0]);
     $("#photoShade").innerHTML = SHADES.map(function (x) { return "<option value='" + x[0] + "'" + (x === near ? " selected" : "") + ">" + x[1] + "</option>"; }).join("");
-    $("#photoFocus").innerHTML = FOCUS.map(function (x) { return "<option value='" + x[0] + "'" + (x[0] === S.photo.focus ? " selected" : "") + ">" + x[1] + "</option>"; }).join("");
-    $("#photoShadeHint").textContent = "A layer of the background color goes over the photo so the words stand out. More of it means easier reading and less photo.";
+    $("#photoShadeHint").textContent = "A layer of the background color goes over the picture so the words stand out. More of it means easier reading and less picture.";
     var r = photoReadability(), v = $("#photoVerdict"), side = dark ? "bright" : "dark";
-    v.className = "verdict" + (r >= 1 ? "" : r >= 0.6 ? " maybe" : " no");
-    v.textContent = r >= 1 ? "\u2713 Easy to read over any photo."
-      : r >= 0.6 ? "Readable over most photos. Check the preview: words over very " + side + " parts of the photo are harder to read."
-      : "Hard to read where the words sit over " + side + " parts of the photo. " + (dark ? "Darken" : "Lighten") + " it more.";
+    v.className = "verdict" + (r === 2 ? "" : r === 1 ? " maybe" : " no");
+    v.textContent = r === 2 ? "\u2713 Easy to read over any picture."
+      : r === 1 ? "Readable over most pictures. Check the preview: words over very " + side + " parts of the picture are harder to read."
+      : "Hard to read where the words sit over " + side + " parts of the picture. " + (dark ? "Darken" : "Lighten") + " it more.";
     var looks = $("#photoLooks");
     looks.hidden = dark || !has;
-    if (!looks.hidden) looks.innerHTML = "This look has dark words, so the layer lightens the photo. For a darkened photo with light words, switch to a dark look:<br>" +
+    if (!looks.hidden) looks.innerHTML = "This look has dark words, so the layer lightens the picture. For a darkened picture with light words, switch to a dark look:<br>" +
       PRESETS.map(function (p, i) { return lum(p.bg) < 0.25 ? "<button type='button' class='mini-btn' data-preset='" + i + "'>" + esc(p.name) + "</button>" : ""; }).join("");
     var k = 96 / spec.w, fw = Math.round(spec.w * k), fh = Math.max(8, Math.round(spec.h * k)), sw = Math.max(3, Math.round(spec.safeW * k)), shh = Math.max(3, Math.round(spec.safeH * k));
-    var link = CANVA_TEMPLATES[fmt];
+    var link = CANVA_TEMPLATES[fmt], dim = spec.w.toLocaleString("en-US") + " \u00d7 " + spec.h.toLocaleString("en-US");
     $("#photoSpec").innerHTML =
       "<span class='frame' aria-hidden='true' style='width:" + fw + "px;height:" + fh + "px'><i style='left:" + Math.round((fw - sw) / 2) + "px;top:" + Math.round((fh - shh) / 2) + "px;width:" + sw + "px;height:" + shh + "px'></i></span>" +
-      "Best photo size for a " + what + "<b class='dim' id='photoDim'>" + spec.w.toLocaleString("en-US") + " \u00d7 " + spec.h.toLocaleString("en-US") + " pixels</b>" +
+      "Best picture size for a " + what + " background<b class='dim' id='photoDim'>" + dim + " pixels</b>" +
       "<p>" + spec.crop + "</p>" +
       "<p>Keep anything that matters inside the middle <b id='photoSafe'>" + spec.safeW.toLocaleString("en-US") + " \u00d7 " + spec.safeH.toLocaleString("en-US") + "</b> pixels (the shaded box). Every screen shows that part.</p>" +
       "<p>Save it as a JPG, under about 500 KB. Then check Computer, Tablet and Phone in the preview.</p>" +
-      (link ? "<a class='canva' id='photoCanva' href='" + esc(link) + "' target='_blank' rel='noopener'>Open the Canva template for this size</a><span class='hint'>The template is already " + spec.w.toLocaleString("en-US") + " \u00d7 " + spec.h.toLocaleString("en-US") + " and shows the crop lines. Place the photo, delete the guide layer, download as JPG.</span>" : "");
+      (link ? "<a class='canva' id='photoCanva' href='" + esc(link) + "' target='_blank' rel='noopener'>Open the Canva crop guide for this size</a><span class='hint'>It is already " + dim + " and shows what gets cut off. Make your own copy first (the \u22ef menu at the top of Canva, then Make a copy), place the photo, delete the guides, and download as JPG.</span>" : "");
+  }
+  /* A picture behind the words needs light words on a dark layer to look like a photograph. If nobody has chosen
+     a look yet, switch from plain White to the everyday dark combination, and say so. */
+  var hadBackground = false;
+  function autoLook(quiet) {
+    var has = isBackground() && !!S.content.image.url.trim();
+    if (has && !hadBackground && !quiet && !S.lookTouched && lum(S.theme.bg) >= 0.25) {
+      var p = PRESETS.filter(function (x) { return x.name === "Navy & Orange"; })[0];
+      S.presetName = p.name; COLOR_ROLES.forEach(function (r) { S.theme[r[0]] = p[r[0]]; });
+      renderCards(); renderPhoto();
+      toast("Look set to Navy & Orange so the words show over the picture. Change it in step 3, Look.");
+    }
+    hadBackground = has;
+  }
+  /* Does the address actually open as a picture? Catches a page address or a Canva link pasted by mistake. */
+  var imgCheckTimer = null, imgCheckSeq = 0;
+  function checkImage() {
+    clearTimeout(imgCheckTimer);
+    var box = $("#imgLoad"), url = S.content.image.url.trim(), seq = ++imgCheckSeq;
+    if (!url || !okUrl(url)) { box.hidden = true; return; }
+    imgCheckTimer = setTimeout(function () {
+      var im = new Image();
+      im.onload = function () {
+        if (seq !== imgCheckSeq) return;
+        var spec = PHOTO_SPECS[S.format], small = isBackground() && !/\.svg(\?|#|$)/i.test(url) && im.naturalWidth > 0 && im.naturalWidth < spec.w * 0.55;
+        box.hidden = !small; box.className = "verdict maybe";
+        if (small) box.textContent = "This picture is " + im.naturalWidth.toLocaleString("en-US") + " \u00d7 " + im.naturalHeight.toLocaleString("en-US") + " pixels, which is small for a " + whatName() + " background and may look soft. Best is " + spec.w.toLocaleString("en-US") + " \u00d7 " + spec.h.toLocaleString("en-US") + ".";
+      };
+      im.onerror = function () {
+        if (seq !== imgCheckSeq) return;
+        box.hidden = false; box.className = "verdict no";
+        box.textContent = "That address did not open as a picture. Use the address of the picture file itself. It usually ends in .jpg, .png or .webp.";
+      };
+      im.src = url;
+    }, 500);
   }
   function buttonEditor(i) {
     var b = S.content.buttons[i], a = ACTIONS.filter(function (x) { return x[0] === b.action; })[0] || ACTIONS[0];
@@ -652,9 +702,10 @@
     });
     var fmt = S.format;
     $("#optPopup").hidden = fmt !== "popup"; $("#optSlide").hidden = fmt !== "slidein"; $("#optBackdrop").hidden = fmt !== "popup";
-    $("#imageBlock").hidden = fmt === "banner"; $("#formBlock").hidden = fmt === "banner"; $("#optHideImg").hidden = fmt === "banner";
-    var opts = fmt === "popup" ? [["top", "On top"], ["left", "On the left"], ["right", "On the right"]] : fmt === "takeover" ? [["top", "Above the text"]] : [["top", "On top"]];
-    if (!opts.some(function (o) { return o[0] === S.content.image.pos; })) S.content.image.pos = opts[0][0];
+    $("#formBlock").hidden = fmt === "banner";
+    var opts = posOptions(fmt);
+    S.content.image.pos = imagePos();
+    $("#optHideImg").hidden = S.content.image.pos === "bg";
     $("#imgPos").innerHTML = opts.map(function (o) { return "<option value='" + o[0] + "'" + (o[0] === S.content.image.pos ? " selected" : "") + ">" + o[1] + "</option>"; }).join("");
     $("#gtmMode").checked = S.mode === "gtm";
     renderPhoto();
@@ -679,7 +730,7 @@
     renderSteps();
     $("#form").scrollTop = 0;
   }
-  function renderAll() { syncStatic(); renderCards(); renderButtons(); renderWhere(); openUsedOptions(); changed(true); }
+  function renderAll() { syncStatic(); renderCards(); renderButtons(); renderWhere(); openUsedOptions(); autoLook(true); checkImage(); changed(true); }
 
   /* ------------------------------------------------------------------ */
   /* Checks and hand-off                                                 */
@@ -700,8 +751,8 @@
     if (!(ct.buttons || []).length && !ct.form && c.format !== "banner") add("warn", "There is no button, so people can only close it.", 1);
     if (c.format === "banner" && ((ct.headline || "") + (ct.body || "").replace(/<[^>]*>/g, "")).length > 110) add("warn", "That is a lot of words for a banner. It will run to several lines on phones.", 1);
     TERMS.forEach(function (t) { if (t[0].test(text)) add("warn", t[1], 1); });
-    if (c.theme.photo && !okUrl(c.theme.photo.url)) add("stop", "The background photo\u2019s address must start with https://", 2);
-    else if (c.theme.photo && photoReadability() < 0.6) add("warn", "The words may be hard to read over the background photo.", 2);
+    if (c.theme.photo && !okUrl(c.theme.photo.url)) add("stop", "The picture\u2019s address must start with https://", 1);
+    else if (c.theme.photo && photoReadability() === 0) add("warn", "The words may be hard to read over the picture behind them.", 2);
     if (ratio(c.theme.text, c.theme.bg) < 4.5 || ratio(c.theme.head, c.theme.bg) < 3 || ratio(c.theme.btnText, c.theme.btnBg) < 4.5) add("warn", "Some of the wording is hard to read in these colors.", 2);
     if (S.mode !== "gtm" && S.whereSome && !S.sets[0].include.length) add("stop", "Choose at least one section or page, or switch to “On every page”.", 3);
     if (!S.devices.desktop && !S.devices.tablet && !S.devices.phone) add("stop", "Choose at least one kind of device.", 3);
@@ -818,7 +869,7 @@
         var v = t.type === "checkbox" ? t.checked : (t.type === "number" ? +t.value : t.value);
         if (k === "id") { v = String(v).toLowerCase().replace(/[^a-z0-9-]/g, "-").slice(0, 40); S.idTouched = !!v; if (t.value !== v) t.value = v; }
         set(S, k, v);
-        if (k === "photo.url") renderPhoto();
+        if (k === "content.image.url") { autoLook(); renderPhoto(); checkImage(); }
         changed(); return;
       }
       var bi = t.getAttribute("data-b");
@@ -833,7 +884,7 @@
     });
     form.addEventListener("change", function (e) {
       var t = e.target;
-      if (t.getAttribute("data-k") && t.tagName === "SELECT") { set(S, t.getAttribute("data-k"), t.value); syncStatic(); changed(); return; }
+      if (t.getAttribute("data-k") && t.tagName === "SELECT") { set(S, t.getAttribute("data-k"), t.value); syncStatic(); if (t.id === "imgPos") { autoLook(); checkImage(); } changed(); return; }
       if (t.id === "freqClose" || t.id === "freqConv") {
         var o = t.id === "freqClose" ? S.freq.close : S.freq.convert, m = /^days:(\d+)$/.exec(t.value);
         if (m) { o.mode = "days"; o.days = +m[1]; } else o.mode = t.value;
@@ -849,9 +900,9 @@
       var t = e.target.closest("[data-fmt],[data-preset],[data-hex],[data-copy],[data-cmd],#addBtn2,#rmBtn2"); if (!t) return;
       if (t.id === "addBtn2") { S.btn2 = true; if (!S.content.buttons[1].label) S.content.buttons[1] = { label: "Not now", action: "close", value: "", newTab: false, convert: false }; renderButtons(); changed(); }
       else if (t.id === "rmBtn2") { S.btn2 = false; renderButtons(); changed(); }
-      else if (t.hasAttribute("data-fmt")) { var f = FORMATS.filter(function (x) { return x.key === t.getAttribute("data-fmt"); })[0]; S.format = f.format; if (f.pos) S.bannerPos = f.pos; syncStatic(); renderCards(); changed(); }
-      else if (t.hasAttribute("data-preset")) { var p = PRESETS[+t.getAttribute("data-preset")]; S.presetName = p.name; COLOR_ROLES.forEach(function (r) { S.theme[r[0]] = p[r[0]]; }); renderCards(); renderPhoto(); changed(); }
-      else if (t.hasAttribute("data-hex")) { S.theme[t.parentNode.getAttribute("data-role")] = t.getAttribute("data-hex"); S.presetName = ""; renderCards(); renderPhoto(); changed(); }
+      else if (t.hasAttribute("data-fmt")) { var f = FORMATS.filter(function (x) { return x.key === t.getAttribute("data-fmt"); })[0]; S.format = f.format; if (f.pos) S.bannerPos = f.pos; if (!S.content.image.url.trim()) S.content.image.pos = posOptions(S.format)[0][0]; syncStatic(); renderCards(); autoLook(); checkImage(); changed(); }
+      else if (t.hasAttribute("data-preset")) { var p = PRESETS[+t.getAttribute("data-preset")]; S.presetName = p.name; S.lookTouched = true; COLOR_ROLES.forEach(function (r) { S.theme[r[0]] = p[r[0]]; }); renderCards(); renderPhoto(); changed(); }
+      else if (t.hasAttribute("data-hex")) { S.theme[t.parentNode.getAttribute("data-role")] = t.getAttribute("data-hex"); S.presetName = ""; S.lookTouched = true; renderCards(); renderPhoto(); changed(); }
       else if (t.hasAttribute("data-copy")) { copyText($("#" + t.getAttribute("data-copy")).textContent); }
       else if (t.hasAttribute("data-cmd")) {
         var cmd = t.getAttribute("data-cmd"), body = $("#body"); body.focus();
@@ -916,8 +967,10 @@
     if (fromHash && fromHash.format) { try { S = fromConfig(fromHash); } catch (e) { S = null; } }
     else { try { var d = JSON.parse(localStorage.getItem("trplpop_builder_draft") || "null"); if (d && d.content && d.sets && d.theme && d.freq) { d.content.body = cleanBody(String(d.content.body || "")); if (d.btn2 == null) d.btn2 = !!d.content.buttons[1].label; if (d.whereSome == null) d.whereSome = d.sets[0].include.length > 0; S = d; } } catch (e) { S = null; } }
     if (!S) S = blank();
-    S.photo = importPhoto(S.photo);                    // drafts saved before background photos existed
-    adoptOldBackground(S);
+    var oldBg = S.photo && typeof S.photo.url === "string" ? S.photo.url.trim() : "";      // drafts saved when the background had its own field
+    S.photo = importPhoto(S.photo);
+    S.lookTouched = !!S.lookTouched || S.presetName !== "White";
+    if (oldBg) S.content.image = { url: oldBg.slice(0, 500), alt: "", pos: "bg" };
     bind(); fit(); renderAll();
     fetch("../data/sitemap.json").then(function (r) { return r.ok ? r.json() : Promise.reject(); }).then(function (j) { SITEMAP = j; renderWhere(); changed(true); }).catch(function () { renderWhere(); });
     try { frameReady = frameReady || !!$("#frame").contentWindow.TRPLPopup; } catch (e) {}

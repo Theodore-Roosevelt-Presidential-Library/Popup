@@ -42,7 +42,7 @@ If the template tag is missing, the settings are: Custom HTML; Support document.
 
 ## Background photos
 
-Any format can have a background photo (builder, Look step). The photo is scaled to cover the whole pop-up. A layer of the pop-up's own background color goes over it so the words stay readable: on a dark look that darkens the photo, on a light look it lightens it. The builder warns when the words could be hard to read.
+Any format can have a picture behind the words. In the builder's Message step, give the picture's address and set **Where it sits** to **Behind the words**; on a takeover that is the default, so a takeover picture fills the whole window. The picture is scaled to cover the whole pop-up. A layer of the pop-up's own background color goes over it so the words stay readable: on a dark look that darkens the picture, on a light look it lightens it. How much is set in the Look step, which also says whether the words stay readable. If no look has been chosen yet, the builder switches from White to Navy & Orange when a picture goes behind the words.
 
 | Format | Best photo size | Always in view (middle) | Canva template |
 |---|---|---|---|
@@ -53,7 +53,7 @@ Any format can have a background photo (builder, Look step). The photo is scaled
 
 The photo is cropped to fit each screen, so only the middle area is certain to show. Each Canva template is the right size and has the crop lines drawn in: place the photo, delete the guide layer, download as JPG (under about 500 KB), upload it to the website or the photo library, and paste its address into the builder.
 
-The Canva links above open only for people the designs are shared with. To let anyone make their own copy, create a template link for each (Canva: Share, then Template link) and replace the links in `CANVA_TEMPLATES` in `builder/builder.js`.
+The Canva links above are the original designs, shared with the Library's Canva team. Make a copy before adding a photo (the ⋯ menu at the top of Canva, then Make a copy) so the shared guide stays as it is. For people outside the team, create a template link for each (Canva: Share, then Template link) and replace the links in `CANVA_TEMPLATES` in `builder/builder.js`.
 
 In a pop-up's settings the photo is `theme.photo`: `{ "url": "https://…", "shade": 0.65, "focus": "top" }`. `shade` runs from 0 (none) to 0.95; `focus` is `center`, `top`, `bottom`, `left` or `right`.
 
@@ -118,7 +118,7 @@ TRPLPopup.push(["config", { sessionOverlayCap: 1 }]);  // site-wide settings, fr
 
 ```sh
 NODE_PATH=$(npm root -g) node tests/run.js                       # runtime, 179 checks
-NODE_PATH=$(npm root -g) node tests/builder.js                   # builder, 88 checks
+NODE_PATH=$(npm root -g) node tests/builder.js                   # builder, 107 checks
 ```
 
 Both need Node and Playwright with Chromium. Screenshots go to `tests/out/`.

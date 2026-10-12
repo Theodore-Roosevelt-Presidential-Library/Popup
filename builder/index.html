@@ -243,11 +243,17 @@
 
           <div id="imageBlock">
             <h3>Picture <span class="n">(optional)</span></h3>
-            <label><span class="lb">Web address of the picture</span><input type="url" data-k="content.image.url" placeholder="https://www.trlibrary.com/sites/default/files/…">
+            <label><span class="lb">Web address of the picture</span><input type="url" id="imgUrl" data-k="content.image.url" placeholder="https://www.trlibrary.com/sites/default/files/…" spellcheck="false">
               <span class="hint">Upload the picture to the website or the photo library first, then paste its address here.</span></label>
+            <div class="verdict no" id="imgLoad" hidden></div>
             <div class="row">
-              <label><span class="lb">Describe the picture</span><input type="text" data-k="content.image.alt" maxlength="140" placeholder="For people who cannot see it"></label>
-              <label class="fix" style="flex-basis:160px"><span class="lb">Where it sits</span><select data-k="content.image.pos" id="imgPos"></select></label>
+              <label class="fix" style="flex-basis:190px"><span class="lb">Where it sits</span><select data-k="content.image.pos" id="imgPos"></select></label>
+              <label id="imgAltWrap"><span class="lb">Describe the picture</span><input type="text" data-k="content.image.alt" maxlength="140" placeholder="For people who cannot see it"></label>
+              <label id="imgFocusWrap" hidden><span class="lb">Part to keep in view</span><select id="photoFocus"></select></label>
+            </div>
+            <div id="bgOpts" hidden>
+              <span class="hint" id="bgHint"></span>
+              <div class="spec" id="photoSpec"></div>
             </div>
           </div>
 
@@ -282,19 +288,14 @@
           <div class="verdict" id="contrast"></div>
           <p class="hint" id="fontNote" style="margin:.7rem 0 0">Fonts are the website&rsquo;s own, loaded from trlibrary.com: Dharma Gothic for headlines, Clearface for text, Frutiger for buttons.</p>
           <div id="photoBlock">
-            <h3>Background photo <span class="n">(optional)</span></h3>
-            <label><span class="lb">Web address of the photo</span><input type="url" id="photoUrl" data-k="photo.url" placeholder="https://www.trlibrary.com/sites/default/files/…" spellcheck="false">
-              <span class="hint">Upload the photo to the website or the photo library first, then paste its address here. It stretches to fill the whole <span id="photoWhat">pop-up</span>, behind the words.</span></label>
             <div id="photoOpts" hidden>
-              <div class="row">
-                <label><span class="lb" id="photoShadeLabel">Darken the photo</span><select id="photoShade"></select></label>
-                <label><span class="lb">Part to keep in view</span><select id="photoFocus"></select></label>
-              </div>
-              <span class="hint" id="photoShadeHint"></span>
+              <h3>Picture behind the words</h3>
+              <label><span class="lb" id="photoShadeLabel">Darken the picture</span><select id="photoShade"></select>
+                <span class="hint" id="photoShadeHint"></span></label>
               <div class="verdict" id="photoVerdict"></div>
               <div id="photoLooks" hidden></div>
             </div>
-            <div class="spec" id="photoSpec"></div>
+            <p class="hint" id="photoNone" style="margin:.9rem 0 0">Want a picture behind the words? Add it in step 2, Message, and choose &ldquo;Behind the words&rdquo;. <button type="button" class="linkish" data-go="1">Go to Message</button></p>
           </div>
 
           <details class="more" id="more2">
